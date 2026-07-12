@@ -1,9 +1,11 @@
 // 中枢看板 — 旅行记忆模块（Leaflet 2D 平面地图 + 3D 视觉风格）
 
-import { App, Modal, Setting, Notice, TFile } from 'obsidian';
+import { App, Modal, Setting, Notice, TFile, requestUrl } from 'obsidian';
 import type MagicOSPlugin from '../../main';
 import { parseFrontmatter } from '../../services/FrontmatterService';
 import * as L from 'leaflet';
+// 🔑 关键：Leaflet 核心样式表（瓦片定位/容器尺寸全靠它，缺失会导致"九宫格"显示不全）
+import leafletCss from 'leaflet/dist/leaflet.css';
 
 type MapViewType = 'standard' | 'satellite' | 'terrain';
 
@@ -19,11 +21,18 @@ export class TravelModule {
   private tileLayers: L.TileLayer[] = [];
   private markerLayer: L.LayerGroup | null = null;
   private currentView: MapViewType = 'standard';
+  private tileCache: TileCache | null = null;
 
   private _rendering = false;
   private _destroyed = false;
   private _lightRefreshing = false;
   private placeFiles: Map<string, TFile[]> = new Map();
+
+  // 🔑 地图尺寸重算相关（修复 Obsidian 视图激活时容器尺寸延迟确定导致地图显示不全）
+  private _resizeObserver: ResizeObserver | null = null;
+  private _wsResizeHandler: (() => void) | null = null;
+  private _resizeTimers: number[] = [];
+  private _warmTimer = 0;
 
   constructor(plugin: MagicOSPlugin, container: HTMLElement, onNavigateHome?: () => void) {
     this.plugin = plugin;
@@ -54,8 +63,8 @@ export class TravelModule {
     (async () => {
       await new Promise((r) => setTimeout(r, 50)); // 让地图先渲染一帧
       const vault = this.plugin.vaultService;
-      await vault.ensureFolder('旅行记忆');
-      const allFiles = vault.listMarkdownFiles('旅行记忆');
+      await vault.ensureFolder(this.plugin.folder('旅行记忆'));
+      const allFiles = vault.listMarkdownFiles(this.plugin.folder('旅行记忆'));
       for (const f of allFiles) {
         try {
           const cnt = await vault.readFile(f);
@@ -220,12 +229,20 @@ export class TravelModule {
         [90, 180],
       ],
       maxBoundsViscosity: 1.0, // 硬边界，到边缘完全停止
-      // 🔑 关键：禁用所有动画，确保最跟手
-      fadeAnimation: false,
-      zoomAnimation: false,
-      markerZoomAnimation: false,
+      // 🔑 关键：开启缩放/淡入动画 → 平滑缩放（瓦片 transform 过渡 + 新瓦片淡入），消除空白闪动。
+      // updateWhenZooming:true 让缩放期间就预取新层级瓦片（边缘不再等缩放结束才加载，避免"中心先出、边缘慢半拍"）；
+      // keepBuffer:4 多缓存一圈周边瓦片（默认2），缩放/平移时边缘更快就位。
+      fadeAnimation: true,
+      zoomAnimation: true,
+      markerZoomAnimation: true,
+      updateWhenZooming: true,
+      keepBuffer: 6,
     });
     this.leafletMap = map;
+
+    // 🔑 初始化本地瓦片缓存（首次显示某瓦片时落盘，之后本地直读 → 缩放边缘与中心同步、跨重启有效）
+    const pid = (this.plugin as any).manifest?.id ?? 'hub-dashboard';
+    this.tileCache = new TileCache(this.plugin.app.vault.adapter, `.obsidian/plugins/${pid}/map-cache`);
 
     // 添加当前视图瓦片
     this.addTileLayers(this.currentView);
@@ -236,9 +253,111 @@ export class TravelModule {
     // 加载地点标记
     setTimeout(() => this.scanVaultAndMark(), 100);
 
+    // 🔑 关键修复：容器尺寸稳定后重算地图（否则瓦片只铺初始尺寸 → 显示不全）
+    this.setupMapResizeHandling();
+
+    // 🔑 相邻层级瓦片预热：缩放前把 zoom±1 的瓦片提前缓存进浏览器，
+    // 消除"边缘瓦片现下载、慢一拍"的问题（治本，而非仅靠动画）。
+    this.scheduleWarm();
+    map.on('moveend', () => this.scheduleWarm());
+    map.on('zoomend', () => this.scheduleWarm());
+
     // 更新统计
     const statsEl = this.container.querySelector('.magic-travel-stats') as HTMLElement;
     if (statsEl) statsEl.textContent = `🗺️ 旅行地图 · 已记录 ${this.places.length} 个地点`;
+  }
+
+  // === 相邻层级瓦片预热（消除"缩放时边缘瓦片慢一拍"）===
+  // 栅格瓦片缩放时新层级边缘瓦片天然晚到。这里在地图空闲时把 zoom±1 的瓦片
+  // 通过本地缓存(TileCache)提前落盘——之后缩放时新层级瓦片已在本地磁盘，
+  // 边缘与中心同步就位，且跨重启有效（比浏览器 HTTP 缓存更彻底）。
+  private scheduleWarm(): void {
+    clearTimeout(this._warmTimer);
+    // 空闲 400ms 后再预热，避免与正在进行的缩放/平移抢带宽
+    this._warmTimer = window.setTimeout(() => this.warmAdjacentZooms(), 400);
+  }
+
+  private warmAdjacentZooms(): void {
+    const map = this.leafletMap;
+    if (!map || this._destroyed || !this.tileCache) return;
+    const z = Math.round(map.getZoom());
+    const padded = map.getBounds().pad(0.6); // 比当前视野大一圈，覆盖即将进入的区域
+    const tileSize = 256;
+    const cache = this.tileCache;
+    let total = 0;
+    for (const zz of [z - 1, z + 1]) {
+      if (zz < map.getMinZoom() || zz > map.getMaxZoom()) continue;
+      const nw = L.CRS.EPSG3857.latLngToPoint(padded.getNorthWest(), zz);
+      const se = L.CRS.EPSG3857.latLngToPoint(padded.getSouthEast(), zz);
+      const xMin = Math.floor(nw.x / tileSize);
+      const xMax = Math.floor(se.x / tileSize);
+      const yMin = Math.floor(nw.y / tileSize);
+      const yMax = Math.floor(se.y / tileSize);
+      if ((xMax - xMin + 1) * (yMax - yMin + 1) > 60) continue; // 防极端请求量
+      for (let x = xMin; x <= xMax; x++) {
+        for (let y = yMin; y <= yMax; y++) {
+          for (const spec of this.layerTemplates(this.currentView)) {
+            if (total++ > 120) return; // 安全上限
+            const url = spec.tmpl
+              .replace(/\{s\}/g, spec.sub[(Math.abs(x + y)) % spec.sub.length])
+              .replace(/\{z\}/g, String(zz))
+              .replace(/\{x\}/g, String(x))
+              .replace(/\{y\}/g, String(y));
+            cache.warm(TileCache.key(this.currentView, spec.tag, zz, x, y), url);
+          }
+        }
+      }
+    }
+  }
+
+  // 各视图的瓦片层模板（single source of truth：addTileLayers 与预热共用，确保缓存 key/URL 完全一致）
+  private layerTemplates(view: MapViewType): { tmpl: string; tag: string; maxZoom: number; sub: string }[] {
+    switch (view) {
+      case 'standard':
+        return [
+          { tmpl: 'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', tag: 'base', maxZoom: 18, sub: '1234' },
+        ];
+      case 'satellite':
+        return [
+          { tmpl: 'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', tag: 'sat', maxZoom: 18, sub: '1234' },
+          { tmpl: 'https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}', tag: 'label', maxZoom: 18, sub: '1234' },
+        ];
+      case 'terrain':
+        return [
+          { tmpl: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', tag: 'terrain', maxZoom: 17, sub: 'abc' },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  // === 地图尺寸自适应（修复"显示不全"）===
+  // Obsidian ItemView 激活瞬间，地图容器的真实尺寸往往尚未确定（宽度为 0 或异常），
+  // Leaflet 据此只铺了部分瓦片，表现为地图区域灰块 / 只显示一角。
+  // 三保险：① 初始延时 invalidateSize；② ResizeObserver 监听容器尺寸变化；③ 监听工作区 resize。
+  private setupMapResizeHandling(): void {
+    const map = this.leafletMap;
+    if (!map) return;
+    const mapDiv = this.container.querySelector('.magic-travel-map') as HTMLElement | null;
+    if (!mapDiv) return;
+
+    // ① 初次布局稳定后强制重算（200ms 足够 Obsidian 完成视图切换动画）
+    const t = window.setTimeout(() => map.invalidateSize(), 200);
+    this._resizeTimers.push(t);
+
+    // ② 容器尺寸一旦变化就重算（最稳健，覆盖任何来源的尺寸变动）
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => map.invalidateSize());
+    });
+    ro.observe(mapDiv);
+    this._resizeObserver = ro;
+
+    // ③ 工作区分屏 / 窗口缩放时重算
+    const onWsResize = () => map.invalidateSize();
+    this.plugin.app.workspace.on('resize', onWsResize);
+    this._wsResizeHandler = onWsResize;
   }
 
   private addTileLayers(view: MapViewType): void {
@@ -248,44 +367,20 @@ export class TravelModule {
     this.tileLayers.forEach((l) => l.remove());
     this.tileLayers = [];
 
-    switch (view) {
-      case 'standard': {
-        // 高德矢量地图（style=7 已包含标注，无需叠加 style=8）
-        const base = L.tileLayer(
-          'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
-          { maxZoom: 18, subdomains: '1234' },
-        );
-        base.addTo(this.leafletMap);
-        this.tileLayers.push(base);
-        break;
+    // 有本地缓存则用 CachedTileLayer（缓存优先、未命中落盘），否则退回普通瓦片层
+    if (!this.tileCache) {
+      for (const s of this.layerTemplates(view)) {
+        const t = L.tileLayer(s.tmpl, { maxZoom: s.maxZoom, subdomains: s.sub });
+        t.addTo(this.leafletMap);
+        this.tileLayers.push(t);
       }
-      case 'satellite': {
-        // 卫星影像（无标注，需叠加 style=8）
-        const sat = L.tileLayer(
-          'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
-          { maxZoom: 18, subdomains: '1234' },
-        );
-        sat.addTo(this.leafletMap);
-        this.tileLayers.push(sat);
-        // 标注层
-        const label = L.tileLayer(
-          'https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}',
-          { maxZoom: 18, subdomains: '1234' },
-        );
-        label.addTo(this.leafletMap);
-        this.tileLayers.push(label);
-        break;
-      }
-      case 'terrain': {
-        // 地形图 — OpenTopoMap（开源地形等高线瓦片）
-        const terrain = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-          maxZoom: 17,
-          subdomains: 'abc',
-        });
-        terrain.addTo(this.leafletMap);
-        this.tileLayers.push(terrain);
-        break;
-      }
+      return;
+    }
+    for (const s of this.layerTemplates(view)) {
+      const layer = new CachedTileLayer(s.tmpl, { maxZoom: s.maxZoom, subdomains: s.sub });
+      layer.setCache(this.tileCache, view, s.tag);
+      layer.addTo(this.leafletMap);
+      this.tileLayers.push(layer);
     }
   }
 
@@ -433,7 +528,7 @@ export class TravelModule {
 
       // 重新读取旅行记忆文件夹（仅此文件夹，不扫描全 vault）
       const vault = this.plugin.vaultService;
-      const allFiles = vault.listMarkdownFiles('旅行记忆');
+      const allFiles = vault.listMarkdownFiles(this.plugin.folder('旅行记忆'));
       this.places = [];
 
       for (let idx = 0; idx < allFiles.length; idx++) {
@@ -520,6 +615,15 @@ export class TravelModule {
   // === 样式注入 ===
 
   private injectStyles(): void {
+    // 🔑 注入 Leaflet 核心样式表：瓦片绝对定位、容器尺寸、缩放控件布局全靠它。
+    // 缺失时瓦片会像普通图片一样流式排列 → "九宫格只显示两三个格子"。
+    if (!document.getElementById('magic-travel-leaflet-core')) {
+      const core = document.createElement('style');
+      core.id = 'magic-travel-leaflet-core';
+      core.textContent = leafletCss;
+      document.head.appendChild(core);
+    }
+
     if (document.getElementById('magic-travel-leaflet-styles')) return;
 
     const style = document.createElement('style');
@@ -694,11 +798,11 @@ export class TravelModule {
         const fileName = `${city}-${Date.now()}.md`;
         const today = window.moment().format('YYYY-MM-DD');
         const content = `---\n标题: "${city}"\n城市: "${city}"\n经度: ${lon}\n纬度: ${lat}\n封面: ""\n到访次数: 0\n到访记录: []\n创建日期: ${today}\n标签: []\n---\n\n# ${city}\n\n## 旅行笔记\n\n`;
-        await vault.createMarkdownFile('旅行记忆/' + fileName, content);
+        await vault.createMarkdownFile(this.plugin.folder('旅行记忆') + '/' + fileName, content);
         new Notice(`已添加地点: ${city}`);
         // 🔑 本地添加，不重新扫描全 vault
         this.places.push({
-          file: vault.getFile('旅行记忆/' + fileName) as TFile,
+          file: vault.getFile(this.plugin.folder('旅行记忆') + '/' + fileName) as TFile,
           fm: { 城市: city, 标题: city, 到访次数: 0 },
           lon,
           lat,
@@ -719,9 +823,153 @@ export class TravelModule {
       this.leafletMap.remove();
       this.leafletMap = null;
     }
+    // 🔑 清理尺寸监听，避免内存泄漏 / resize 事件重复绑定
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
+    if (this._wsResizeHandler) {
+      this.plugin.app.workspace.off('resize', this._wsResizeHandler);
+      this._wsResizeHandler = null;
+    }
+    this._resizeTimers.forEach((t) => clearTimeout(t));
+    this._resizeTimers = [];
+    clearTimeout(this._warmTimer);
+    this.tileCache?.dispose();
     this.tileLayers = [];
     this.markerLayer = null;
     this.rightPanelEl = null;
+  }
+}
+
+// === 本地瓦片缓存（根治"缩放边缘慢一拍"）===
+// 第一次显示某瓦片时，用 Obsidian 的 requestUrl（绕过浏览器 CORS，走 Electron 网络层）
+// 把瓦片字节拉下来存入插件数据目录（.obsidian/plugins/<id>/map-cache/），之后本地直读。
+// 这样缩放时新层级瓦片已在本地 → 边缘与中心同步就位；且跨重启/换库有效。
+class TileCache {
+  private adapter: any;
+  private base: string;
+  private mem = new Map<string, string>(); // key -> blob URL（会话内复用，dispose 时统一 revoke）
+  private readOnly = false;
+  private readonly max = 30000;
+
+  constructor(adapter: any, baseDir: string) {
+    this.adapter = adapter;
+    this.base = baseDir;
+    // 确保缓存目录存在（插件目录本身已存在，只需建 map-cache 子目录）
+    this.adapter.mkdir(this.base).catch(() => {});
+    // 统计现有瓦片数，超上限则转只读（停止落盘，但仍可读已缓存 + 网络直显）
+    this.adapter.list(this.base).then((files: any[]) => {
+      if (Array.isArray(files) && files.length >= this.max) this.readOnly = true;
+    }).catch(() => {});
+  }
+
+  static key(view: string, tag: string, z: number, x: number, y: number): string {
+    return `${view}_${tag}_${z}_${x}_${y}`;
+  }
+
+  private path(key: string): string {
+    return `${this.base}/${key}.png`;
+  }
+
+  // 显示用：优先内存 → 磁盘 → 网络；返回可直接作为 img.src 的 URL（blob: 或原网络地址）
+  async resolve(key: string, url: string): Promise<string> {
+    const m = this.mem.get(key);
+    if (m) return m;
+    const disk = await this.diskGet(key);
+    if (disk) {
+      const b = URL.createObjectURL(new Blob([disk]));
+      this.mem.set(key, b);
+      return b;
+    }
+    if (this.readOnly) return url; // 只读模式：直接让 <img> 走网络（显示不需 CORS）
+    try {
+      const resp = await requestUrl({ url });
+      const buf: ArrayBuffer = resp.arrayBuffer;
+      this.diskStore(key, buf);
+      const b = URL.createObjectURL(new Blob([buf]));
+      this.mem.set(key, b);
+      return b;
+    } catch {
+      return url; // 兜底：网络直显
+    }
+  }
+
+  // 预热用：只落盘、不建 blob（省内存）；已存在则跳过
+  async warm(key: string, url: string): Promise<void> {
+    if (this.mem.has(key)) return;
+    if (await this.diskExists(key)) return;
+    if (this.readOnly) return;
+    try {
+      const resp = await requestUrl({ url });
+      this.diskStore(key, resp.arrayBuffer);
+    } catch {
+      /* 预热失败不影响显示，下次再说 */
+    }
+  }
+
+  private async diskGet(key: string): Promise<Uint8Array | null> {
+    try {
+      const p = this.path(key);
+      if (await this.adapter.exists(p)) return await this.adapter.readBinary(p);
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+
+  private async diskExists(key: string): Promise<boolean> {
+    try {
+      return await this.adapter.exists(this.path(key));
+    } catch {
+      return false;
+    }
+  }
+
+  private diskStore(key: string, buf: ArrayBuffer): void {
+    if (this.readOnly) return;
+    // 异步落盘，不阻塞显示
+    this.adapter.writeBinary(this.path(key), buf).catch(() => {});
+  }
+
+  // 释放：revoke 所有会话内 blob URL
+  dispose(): void {
+    this.mem.forEach((u) => URL.revokeObjectURL(u));
+    this.mem.clear();
+  }
+}
+
+// 自定义瓦片层：本地缓存优先，未命中才走网络并存盘
+class CachedTileLayer extends L.TileLayer {
+  private cache: TileCache | null = null;
+  private view: MapViewType = 'standard';
+  private tag = 'base';
+
+  setCache(cache: TileCache, view: MapViewType, tag: string): this {
+    this.cache = cache;
+    this.view = view;
+    this.tag = tag;
+    return this;
+  }
+
+  createTile(coords: any, done: any): HTMLElement {
+    const tile = document.createElement('img');
+    tile.className = 'leaflet-tile';
+    tile.alt = '';
+    tile.setAttribute('role', 'presentation');
+    const key = TileCache.key(this.view, this.tag, coords.z, coords.x, coords.y);
+    const netUrl = this.getTileUrl(coords);
+    const onReady = (src: string) => {
+      tile.onload = () => done(undefined, tile);
+      tile.onerror = () => done(new Error('tile load error'), tile);
+      tile.src = src;
+    };
+    if (this.cache) {
+      this.cache.resolve(key, netUrl).then(onReady).catch(() => onReady(netUrl));
+    } else {
+      onReady(netUrl);
+    }
+    return tile;
   }
 }
 

@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: MagicOSSettings = {
     travel: '旅行记忆',
     creativeWorkshop: '创意工坊',
   },
+  vaultRoot: '中枢看板',
   homepageLayout: {
     gridColumns: 4,
     gridRows: 'auto',

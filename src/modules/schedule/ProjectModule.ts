@@ -46,20 +46,20 @@ export class ProjectModule {
 
     // 加载项目列表
     const vault = this.plugin.vaultService;
-    const projFolder = vault.getFolder('项目管理');
+    const projFolder = vault.getFolder(this.plugin.folder('项目管理'));
 
     if (!projFolder) {
-      await vault.ensureFolder('项目管理');
+      await vault.ensureFolder(this.plugin.folder('项目管理'));
     }
 
-    const subfolders = vault.listSubfolders('项目管理');
+    const subfolders = vault.listSubfolders(this.plugin.folder('项目管理'));
     for (const sf of subfolders) {
       const item = panel.createDiv({ cls: 'proj-item' });
       item.style.cssText = `padding:8px 10px;margin-bottom:4px;border-radius:8px;cursor:pointer;font-size:12px;background:${this.selectedProject === sf.name ? 'var(--interactive-accent)' : 'var(--background-primary)'};color:${this.selectedProject === sf.name ? 'var(--text-on-accent)' : 'var(--text-normal)'};display:flex;align-items:center;justify-content:space-between;`;
       item.createSpan({ text: sf.name });
 
       // 计算进度
-      const tasks = vault.listMarkdownFiles('项目管理/' + sf.name);
+      const tasks = vault.listMarkdownFiles(this.plugin.folder('项目管理') + '/' + sf.name);
       let done = 0;
       for (const t of tasks) {
         const c = await vault.readFile(t);
@@ -107,7 +107,7 @@ export class ProjectModule {
 
     // 进度条
     const vault = this.plugin.vaultService;
-    const tasks = vault.listMarkdownFiles('项目管理/' + this.selectedProject);
+    const tasks = vault.listMarkdownFiles(this.plugin.folder('项目管理') + '/' + this.selectedProject);
     let doneCnt = 0;
     for (const t of tasks) {
       const c = await vault.readFile(t);
@@ -190,7 +190,7 @@ export class ProjectModule {
       async (name: string) => {
         if (!name.trim()) return;
         const safeName = name.trim().replace(/[\\/:*?"<>|]/g, '_');
-        await this.plugin.vaultService.ensureFolder('项目管理/' + safeName);
+        await this.plugin.vaultService.ensureFolder(this.plugin.folder('项目管理') + '/' + safeName);
         this.selectedProject = safeName;
         this.render();
       },
@@ -207,7 +207,7 @@ export class ProjectModule {
         const vault = this.plugin.vaultService;
         const fileName = `${name.trim()}-${Date.now()}.md`;
         const content = `---\n标题: "${name.trim()}"\n创建日期: ${window.moment().format('YYYY-MM-DD')}\n截止日期: ${dueDate || ''}\n优先级: ${priority}\n状态: 待办\n所属项目: ${projectName}\n标签: []\n---\n\n# ${name.trim()}\n`;
-        await vault.createMarkdownFile(`项目管理/${projectName}/${fileName}`, content);
+        await vault.createMarkdownFile(`${this.plugin.folder('项目管理')}/${projectName}/${fileName}`, content);
         this.render();
       },
     );

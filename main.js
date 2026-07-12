@@ -1039,7 +1039,7 @@ var require_leaflet_src = __commonJS({
         }
         return new LatLng(a, b, c);
       }
-      var CRS = {
+      var CRS2 = {
         // @method latLngToPoint(latlng: LatLng, zoom: Number): Point
         // Projects geographical coordinates into pixel coordinates for a given zoom.
         latLngToPoint: function(latlng, zoom2) {
@@ -1124,7 +1124,7 @@ var require_leaflet_src = __commonJS({
           return new LatLngBounds(newSw, newNe);
         }
       };
-      var Earth = extend({}, CRS, {
+      var Earth = extend({}, CRS2, {
         wrapLng: [-180, 180],
         // Mean Earth Radius, as recommended for use by
         // the International Union of Geodesy and Geophysics,
@@ -4387,7 +4387,7 @@ var require_leaflet_src = __commonJS({
         projection: LonLat,
         transformation: toTransformation(1 / 180, 1, -1 / 180, 0.5)
       });
-      var Simple = extend({}, CRS, {
+      var Simple = extend({}, CRS2, {
         projection: LonLat,
         transformation: toTransformation(1, 0, -1, 0),
         scale: function(zoom2) {
@@ -4402,12 +4402,12 @@ var require_leaflet_src = __commonJS({
         },
         infinite: true
       });
-      CRS.Earth = Earth;
-      CRS.EPSG3395 = EPSG3395;
-      CRS.EPSG3857 = EPSG3857;
-      CRS.EPSG900913 = EPSG900913;
-      CRS.EPSG4326 = EPSG4326;
-      CRS.Simple = Simple;
+      CRS2.Earth = Earth;
+      CRS2.EPSG3395 = EPSG3395;
+      CRS2.EPSG3857 = EPSG3857;
+      CRS2.EPSG900913 = EPSG900913;
+      CRS2.EPSG4326 = EPSG4326;
+      CRS2.Simple = Simple;
       var Layer = Evented.extend({
         // Classes extending `L.Layer` will inherit the following options:
         options: {
@@ -7894,7 +7894,7 @@ var require_leaflet_src = __commonJS({
       function gridLayer(options) {
         return new GridLayer(options);
       }
-      var TileLayer = GridLayer.extend({
+      var TileLayer2 = GridLayer.extend({
         // @section
         // @aka TileLayer options
         options: {
@@ -8078,9 +8078,9 @@ var require_leaflet_src = __commonJS({
         }
       });
       function tileLayer2(url, options) {
-        return new TileLayer(url, options);
+        return new TileLayer2(url, options);
       }
-      var TileLayerWMS = TileLayer.extend({
+      var TileLayerWMS = TileLayer2.extend({
         // @section
         // @aka TileLayer.WMS options
         // If any custom options not documented here are used, they will be sent to the
@@ -8134,10 +8134,10 @@ var require_leaflet_src = __commonJS({
           this._wmsVersion = parseFloat(this.wmsParams.version);
           var projectionKey = this._wmsVersion >= 1.3 ? "crs" : "srs";
           this.wmsParams[projectionKey] = this._crs.code;
-          TileLayer.prototype.onAdd.call(this, map2);
+          TileLayer2.prototype.onAdd.call(this, map2);
         },
         getTileUrl: function(coords) {
-          var tileBounds = this._tileCoordsToNwSe(coords), crs = this._crs, bounds = toBounds(crs.project(tileBounds[0]), crs.project(tileBounds[1])), min = bounds.min, max = bounds.max, bbox = (this._wmsVersion >= 1.3 && this._crs === EPSG4326 ? [min.y, min.x, max.y, max.x] : [min.x, min.y, max.x, max.y]).join(","), url = TileLayer.prototype.getTileUrl.call(this, coords);
+          var tileBounds = this._tileCoordsToNwSe(coords), crs = this._crs, bounds = toBounds(crs.project(tileBounds[0]), crs.project(tileBounds[1])), min = bounds.min, max = bounds.max, bbox = (this._wmsVersion >= 1.3 && this._crs === EPSG4326 ? [min.y, min.x, max.y, max.x] : [min.x, min.y, max.x, max.y]).join(","), url = TileLayer2.prototype.getTileUrl.call(this, coords);
           return url + getParamString(this.wmsParams, url, this.options.uppercase) + (this.options.uppercase ? "&BBOX=" : "&bbox=") + bbox;
         },
         // @method setParams(params: Object, noRedraw?: Boolean): this
@@ -8153,7 +8153,7 @@ var require_leaflet_src = __commonJS({
       function tileLayerWMS(url, options) {
         return new TileLayerWMS(url, options);
       }
-      TileLayer.WMS = TileLayerWMS;
+      TileLayer2.WMS = TileLayerWMS;
       tileLayer2.wms = tileLayerWMS;
       var Renderer = Layer.extend({
         // @section
@@ -9493,7 +9493,7 @@ var require_leaflet_src = __commonJS({
       Map2.TouchZoom = TouchZoom;
       exports2.Bounds = Bounds;
       exports2.Browser = Browser;
-      exports2.CRS = CRS;
+      exports2.CRS = CRS2;
       exports2.Canvas = Canvas;
       exports2.Circle = Circle;
       exports2.CircleMarker = CircleMarker;
@@ -9531,7 +9531,7 @@ var require_leaflet_src = __commonJS({
       exports2.Renderer = Renderer;
       exports2.SVG = SVG;
       exports2.SVGOverlay = SVGOverlay;
-      exports2.TileLayer = TileLayer;
+      exports2.TileLayer = TileLayer2;
       exports2.Tooltip = Tooltip;
       exports2.Transformation = Transformation;
       exports2.Util = Util;
@@ -9596,6 +9596,7 @@ var DEFAULT_SETTINGS = {
     travel: "\u65C5\u884C\u8BB0\u5FC6",
     creativeWorkshop: "\u521B\u610F\u5DE5\u574A"
   },
+  vaultRoot: "\u4E2D\u67A2\u770B\u677F",
   homepageLayout: {
     gridColumns: 4,
     gridRows: "auto",
@@ -9691,6 +9692,13 @@ var MagicOSSettingTab = class extends import_obsidian.PluginSettingTab {
         })
       );
     }
+    containerEl.createEl("h3", { text: "\u6570\u636E\u5B58\u653E\u4F4D\u7F6E" });
+    new import_obsidian.Setting(containerEl).setName("\u6570\u636E\u6839\u6587\u4EF6\u5939").setDesc("\u6240\u6709\u6A21\u5757\u6570\u636E\u7EDF\u4E00\u5B58\u653E\u7684\u7236\u6587\u4EF6\u5939\u540D\u79F0\uFF08\u4F4D\u4E8E vault \u6839\u76EE\u5F55\uFF09").addText(
+      (text) => text.setValue(this.plugin.magicSettings.vaultRoot).onChange(async (value) => {
+        this.plugin.magicSettings.vaultRoot = value.trim() || "\u4E2D\u67A2\u770B\u677F";
+        await this.plugin.saveSettings();
+      })
+    );
     containerEl.createEl("h3", { text: "iCloud \u65E5\u5386\u540C\u6B65" });
     new import_obsidian.Setting(containerEl).setName("\u542F\u7528\u540C\u6B65").setDesc("\u5C06\u4FEE\u4E60\u8BFE\u8868\u4E2D\u7684\u65E5\u7A0B\u540C\u6B65\u5230 iCloud \u65E5\u5386\uFF08\u9700\u8981\u672C\u5730\u65E5\u5386\u6587\u4EF6\u652F\u6301\uFF09").addToggle(
       (toggle) => toggle.setValue(this.plugin.magicSettings.icloudCalendar.enabled).onChange(async (value) => {
@@ -9776,7 +9784,8 @@ var MagicOSSettingTab = class extends import_obsidian.PluginSettingTab {
             new import_obsidian.Notice(`\u274C API \u8FD4\u56DE\u5F02\u5E38\uFF1A${json.info || "\u672A\u77E5\u9519\u8BEF"}`, 8e3);
           }
         } catch (e) {
-          new import_obsidian.Notice(`\u274C \u6D4B\u8BD5\u5931\u8D25\uFF1A${e.message || "\u7F51\u7EDC\u9519\u8BEF"}`, 8e3);
+          const msg = e instanceof Error ? e.message : "\u7F51\u7EDC\u9519\u8BEF";
+          new import_obsidian.Notice(`\u274C \u6D4B\u8BD5\u5931\u8D25\uFF1A${msg}`, 8e3);
         } finally {
           btn.setDisabled(false);
         }
@@ -9978,7 +9987,7 @@ var ScheduleModule = class {
         it.style.display = it.textContent.toLowerCase().includes(q) ? "flex" : "none";
       });
     });
-    sb.createDiv({ cls: "sch-sb-stats" }).textContent = "\u672C\u5468\u4EFB\u52A1: " + this.vault.listMarkdownFiles("\u4FEE\u4E60\u8BFE\u8868").length + " \u4E2A";
+    sb.createDiv({ cls: "sch-sb-stats" }).textContent = "\u672C\u5468\u4EFB\u52A1: " + this.vault.listMarkdownFiles(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868")).length + " \u4E2A";
     const viewToggle = sb.createEl("button", {
       text: this.schView === "week" ? "\u{1F4C5} \u5468\u89C6\u56FE" : "\u{1F4C6} \u6708\u89C6\u56FE",
       cls: "sch-view-toggle"
@@ -10082,7 +10091,7 @@ var ScheduleModule = class {
     }
     const cellsContainer = cal.createDiv({ cls: "sch-day-cells" });
     cellsContainer.style.cssText = "display:grid;grid-template-columns:repeat(7,1fr);gap:2px;flex:1;";
-    const allFiles = this.vault.listMarkdownFiles("\u4FEE\u4E60\u8BFE\u8868");
+    const allFiles = this.vault.listMarkdownFiles(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868"));
     for (let d = 0; d < totalDays; d++) {
       const day = weekStart.clone().add(d, "days");
       const dateStr = day.format("YYYY-MM-DD");
@@ -10097,7 +10106,7 @@ var ScheduleModule = class {
         for (const f of dayFiles.slice(0, 5)) {
           const cnt = await this.vault.readFile(f);
           const pp = parseFrontmatter(cnt);
-          const fm = pp?.data || {};
+          const fm = pp?.data ?? {};
           const done = fm.\u72B6\u6001 === "\u5B8C\u6210";
           const time = fm.\u65F6\u95F4 || "";
           const chip = cell.createDiv({ cls: "sch-task-chip" });
@@ -10175,14 +10184,14 @@ var ScheduleModule = class {
 
 \u65F6\u957F: ${preset.duration}h
 `;
-        await this.vault.createMarkdownFile("\u4FEE\u4E60\u8BFE\u8868/" + fileName, content);
+        await this.vault.createMarkdownFile(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868") + "/" + fileName, content);
         this.render();
       });
     }
   }
   // === 统计栏 ===
   async renderStats(parent) {
-    const allFiles = this.vault.listMarkdownFiles("\u4FEE\u4E60\u8BFE\u8868");
+    const allFiles = this.vault.listMarkdownFiles(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868"));
     let doneCnt = 0, pendCnt = 0, todayCnt = 0, hiCnt = 0;
     const todayStr = window.moment().format("YYYY-MM-DD");
     const reads = allFiles.map(
@@ -10210,12 +10219,12 @@ var ScheduleModule = class {
   async renderTaskList(parent) {
     const panel = parent.createDiv({ cls: "sch-bot-panel" });
     panel.style.cssText = "flex:0.35;background:var(--background-secondary);border-radius:16px;border:1px solid var(--background-modifier-border);padding:12px;overflow-y:auto;";
-    const allFiles = this.vault.listMarkdownFiles("\u4FEE\u4E60\u8BFE\u8868");
+    const allFiles = this.vault.listMarkdownFiles(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868"));
     const incompleteTasks = [];
     for (const f of allFiles) {
       const cnt = await this.vault.readFile(f);
       const pp = parseFrontmatter(cnt);
-      const fm = pp?.data || {};
+      const fm = pp?.data ?? {};
       if (fm.\u72B6\u6001 === "\u5B8C\u6210") continue;
       incompleteTasks.push({ file: f, fm, priority: fm.\u4F18\u5148\u7EA7 || "\u4E2D" });
     }
@@ -10313,9 +10322,9 @@ var ScheduleModule = class {
 
 # ${name}
 `;
-      await this.vault.createMarkdownFile("\u4FEE\u4E60\u8BFE\u8868/" + fileName, content);
+      await this.vault.createMarkdownFile(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868") + "/" + fileName, content);
       this.render();
-      this.openInDetailPanel("\u4FEE\u4E60\u8BFE\u8868/" + fileName);
+      this.openInDetailPanel(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868") + "/" + fileName);
     });
     cancelBtn.addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (ev) => {
@@ -10335,7 +10344,7 @@ var ScheduleModule = class {
     this.detailPanel.empty();
     const cnt = await this.vault.readFile(f);
     const pp = parseFrontmatter(cnt);
-    const fm = pp?.data || {};
+    const fm = pp?.data ?? {};
     const body = (pp?.body || "").trim();
     const tb = this.detailPanel.createDiv();
     tb.style.cssText = "display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--background-modifier-border);flex-shrink:0;";
@@ -10356,8 +10365,7 @@ var ScheduleModule = class {
     const bodyContainer = this.detailPanel.createDiv();
     bodyContainer.style.cssText = "flex:1;overflow:hidden;position:relative;";
     try {
-      const LC = import_obsidian3.WorkspaceLeaf;
-      this.embeddedLeaf = new LC(this.plugin.app);
+      this.embeddedLeaf = new import_obsidian3.WorkspaceLeaf(this.plugin.app);
       bodyContainer.appendChild(this.embeddedLeaf.containerEl);
       this.embeddedLeaf.containerEl.style.cssText = "width:100%;height:100%;";
       await this.embeddedLeaf.openFile(f);
@@ -10419,7 +10427,7 @@ var ScheduleModule = class {
   // === iCloud 日历同步 ===
   async syncToICloud() {
     try {
-      const allFiles = this.vault.listMarkdownFiles("\u4FEE\u4E60\u8BFE\u8868");
+      const allFiles = this.vault.listMarkdownFiles(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868"));
       const events = [];
       const today = window.moment().format("YYYY-MM-DD");
       for (const f of allFiles) {
@@ -10451,7 +10459,8 @@ PRODID:-//\u4E2D\u67A2\u770B\u677F//Obsidian//EN
 CALSCALE:GREGORIAN
 X-WR-CALNAME:${calName}
 ${events.join("")}END:VCALENDAR`;
-      const icsPath = "\u4FEE\u4E60\u8BFE\u8868/MagicOS-Calendar.ics";
+      await this.vault.ensureFolder(this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868"));
+      const icsPath = this.plugin.folder("\u4FEE\u4E60\u8BFE\u8868") + "/MagicOS-Calendar.ics";
       const existing = this.vault.getFile(icsPath);
       if (existing) {
         await this.vault.writeFile(existing, ics);
@@ -10498,16 +10507,16 @@ var ProjectModule = class {
     addBtn.style.cssText = "width:24px;height:24px;border:1px solid var(--background-modifier-border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;";
     addBtn.addEventListener("click", () => this.showNewProjectDialog());
     const vault = this.plugin.vaultService;
-    const projFolder = vault.getFolder("\u9879\u76EE\u7BA1\u7406");
+    const projFolder = vault.getFolder(this.plugin.folder("\u9879\u76EE\u7BA1\u7406"));
     if (!projFolder) {
-      await vault.ensureFolder("\u9879\u76EE\u7BA1\u7406");
+      await vault.ensureFolder(this.plugin.folder("\u9879\u76EE\u7BA1\u7406"));
     }
-    const subfolders = vault.listSubfolders("\u9879\u76EE\u7BA1\u7406");
+    const subfolders = vault.listSubfolders(this.plugin.folder("\u9879\u76EE\u7BA1\u7406"));
     for (const sf of subfolders) {
       const item = panel.createDiv({ cls: "proj-item" });
       item.style.cssText = `padding:8px 10px;margin-bottom:4px;border-radius:8px;cursor:pointer;font-size:12px;background:${this.selectedProject === sf.name ? "var(--interactive-accent)" : "var(--background-primary)"};color:${this.selectedProject === sf.name ? "var(--text-on-accent)" : "var(--text-normal)"};display:flex;align-items:center;justify-content:space-between;`;
       item.createSpan({ text: sf.name });
-      const tasks = vault.listMarkdownFiles("\u9879\u76EE\u7BA1\u7406/" + sf.name);
+      const tasks = vault.listMarkdownFiles(this.plugin.folder("\u9879\u76EE\u7BA1\u7406") + "/" + sf.name);
       let done = 0;
       for (const t of tasks) {
         const c = await vault.readFile(t);
@@ -10540,7 +10549,7 @@ var ProjectModule = class {
     addTaskBtn.style.cssText = "font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--background-modifier-border);background:transparent;color:var(--text-muted);cursor:pointer;";
     addTaskBtn.addEventListener("click", () => this.showNewTaskDialog(this.selectedProject));
     const vault = this.plugin.vaultService;
-    const tasks = vault.listMarkdownFiles("\u9879\u76EE\u7BA1\u7406/" + this.selectedProject);
+    const tasks = vault.listMarkdownFiles(this.plugin.folder("\u9879\u76EE\u7BA1\u7406") + "/" + this.selectedProject);
     let doneCnt = 0;
     for (const t of tasks) {
       const c = await vault.readFile(t);
@@ -10561,7 +10570,7 @@ var ProjectModule = class {
     for (const f of tasks) {
       const cnt = await vault.readFile(f);
       const pp = parseFrontmatter(cnt);
-      const fm = pp?.data || {};
+      const fm = pp?.data ?? {};
       const done = fm.\u72B6\u6001 === "\u5B8C\u6210";
       const priority = fm.\u4F18\u5148\u7EA7 || "\u9EC4";
       const item = panel.createDiv({ cls: "proj-task-item" });
@@ -10603,7 +10612,7 @@ var ProjectModule = class {
       async (name) => {
         if (!name.trim()) return;
         const safeName = name.trim().replace(/[\\/:*?"<>|]/g, "_");
-        await this.plugin.vaultService.ensureFolder("\u9879\u76EE\u7BA1\u7406/" + safeName);
+        await this.plugin.vaultService.ensureFolder(this.plugin.folder("\u9879\u76EE\u7BA1\u7406") + "/" + safeName);
         this.selectedProject = safeName;
         this.render();
       }
@@ -10630,7 +10639,7 @@ var ProjectModule = class {
 
 # ${name.trim()}
 `;
-        await vault.createMarkdownFile(`\u9879\u76EE\u7BA1\u7406/${projectName}/${fileName}`, content);
+        await vault.createMarkdownFile(`${this.plugin.folder("\u9879\u76EE\u7BA1\u7406")}/${projectName}/${fileName}`, content);
         this.render();
       }
     );
@@ -10802,8 +10811,8 @@ var LibraryModule = class {
   // === 渲染典藏项目 ===
   async renderItems(container) {
     const vault = this.plugin.vaultService;
-    await vault.ensureFolder("\u5178\u85CF\u9986");
-    const allFiles = vault.listMarkdownFiles("\u5178\u85CF\u9986");
+    await vault.ensureFolder(this.plugin.folder("\u5178\u85CF\u9986"));
+    const allFiles = vault.listMarkdownFiles(this.plugin.folder("\u5178\u85CF\u9986"));
     const items = [];
     for (const f of allFiles) {
       const cnt = await vault.readFile(f);
@@ -10865,17 +10874,17 @@ var LibraryModule = class {
   // === 渲染本地文件夹 ===
   async renderLocalFolders(container) {
     const vault = this.plugin.vaultService;
-    const subfolders = vault.listSubfolders("\u5178\u85CF\u9986");
+    const subfolders = vault.listSubfolders(this.plugin.folder("\u5178\u85CF\u9986"));
     for (const sf of subfolders) {
       if (["\u7535\u5F71", "\u5267\u96C6", "\u4E66\u7C4D", "\u4E13\u8F91"].includes(sf.name)) continue;
       const card = container.createDiv({ cls: "lib-folder-card" });
       card.style.cssText = "background:var(--background-secondary);border-radius:12px;padding:16px;border:1px solid var(--background-modifier-border);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px;";
       card.createDiv({ text: "\u{1F4C1}" }).style.cssText = "font-size:36px;margin-bottom:8px;";
       card.createDiv({ text: sf.name }).style.cssText = "font-size:13px;font-weight:600;color:var(--text-normal);";
-      const fileCount = vault.countMarkdownFiles("\u5178\u85CF\u9986/" + sf.name);
+      const fileCount = vault.countMarkdownFiles(this.plugin.folder("\u5178\u85CF\u9986") + "/" + sf.name);
       card.createDiv({ text: `${fileCount} \u4E2A\u6587\u4EF6` }).style.cssText = "font-size:11px;color:var(--text-muted);margin-top:4px;";
       card.addEventListener("click", () => {
-        const files = vault.listMarkdownFiles("\u5178\u85CF\u9986/" + sf.name);
+        const files = vault.listMarkdownFiles(this.plugin.folder("\u5178\u85CF\u9986") + "/" + sf.name);
         if (files.length > 0) {
           this.plugin.app.workspace.openLinkText(files[0].path, "", false);
         } else {
@@ -10900,14 +10909,15 @@ var LibraryModule = class {
   }
   async importFromDouban(title, category) {
     const vault = this.plugin.vaultService;
-    const doubanPlugin = this.plugin.app.plugins?.plugins?.["obsidian-douban"];
+    const app = this.plugin.app;
+    const doubanPlugin = app.plugins.plugins["obsidian-douban"];
     if (doubanPlugin) {
-      this.plugin.app.commands?.executeCommandById?.("obsidian-douban:douban-search");
+      app.commands.executeCommandById("obsidian-douban:douban-search");
       new import_obsidian6.Notice("\u5DF2\u8C03\u7528\u8C46\u74E3\u63D2\u4EF6\u641C\u7D22\uFF0C\u8BF7\u5728\u8C46\u74E3\u641C\u7D22\u7A97\u53E3\u4E2D\u64CD\u4F5C");
       return;
     }
     const catDir = category === "movie" ? "\u7535\u5F71" : category === "tv" ? "\u5267\u96C6" : category === "book" ? "\u4E66\u7C4D" : "\u4E13\u8F91";
-    await vault.ensureFolder("\u5178\u85CF\u9986/" + catDir);
+    await vault.ensureFolder(this.plugin.folder("\u5178\u85CF\u9986") + "/" + catDir);
     const fileName = `${title}-${Date.now()}.md`;
     const today = window.moment().format("YYYY-MM-DD");
     const content = `---
@@ -10941,7 +10951,7 @@ var LibraryModule = class {
 
 
 `;
-    await vault.createMarkdownFile(`\u5178\u85CF\u9986/${catDir}/${fileName}`, content);
+    await vault.createMarkdownFile(`${this.plugin.folder("\u5178\u85CF\u9986")}/${catDir}/${fileName}`, content);
     new import_obsidian6.Notice(`\u5DF2\u521B\u5EFA\u300C${title}\u300D\uFF0C\u8BF7\u6253\u5F00\u6587\u4EF6\u8865\u5145\u8BE6\u7EC6\u4FE1\u606F`);
     this.render();
   }
@@ -10950,7 +10960,7 @@ var LibraryModule = class {
     const modal = new FolderInputDialog(this.plugin.app, async (name) => {
       if (!name.trim()) return;
       const safeName = name.trim().replace(/[\\/:*?"<>|]/g, "_");
-      await this.plugin.vaultService.ensureFolder("\u5178\u85CF\u9986/" + safeName);
+      await this.plugin.vaultService.ensureFolder(this.plugin.folder("\u5178\u85CF\u9986") + "/" + safeName);
       new import_obsidian6.Notice(`\u5DF2\u521B\u5EFA\u6587\u4EF6\u5939: ${safeName}`);
       this.render();
     });
@@ -11016,9 +11026,8 @@ var LibraryModule = class {
       {
         label: "\u{1F4C2} \u5728\u6587\u4EF6\u7BA1\u7406\u5668\u4E2D\u6253\u5F00",
         action: () => {
-          const showInFolder = this.plugin.app.showInFolder;
-          if (typeof showInFolder === "function") showInFolder(folder.path);
-          else new import_obsidian6.Notice("\u8BF7\u5728 Obsidian \u6587\u4EF6\u6D4F\u89C8\u5668\u4E2D\u67E5\u770B");
+          const app = this.plugin.app;
+          app.showInFolder(folder.path);
         }
       },
       {
@@ -11126,6 +11135,672 @@ var FolderInputDialog = class extends import_obsidian6.Modal {
 // src/modules/travel/TravelModule.ts
 var import_obsidian7 = require("obsidian");
 var L2 = __toESM(require_leaflet_src());
+
+// node_modules/leaflet/dist/leaflet.css
+var leaflet_default = `/* required styles */\r
+\r
+.leaflet-pane,\r
+.leaflet-tile,\r
+.leaflet-marker-icon,\r
+.leaflet-marker-shadow,\r
+.leaflet-tile-container,\r
+.leaflet-pane > svg,\r
+.leaflet-pane > canvas,\r
+.leaflet-zoom-box,\r
+.leaflet-image-layer,\r
+.leaflet-layer {\r
+	position: absolute;\r
+	left: 0;\r
+	top: 0;\r
+	}\r
+.leaflet-container {\r
+	overflow: hidden;\r
+	}\r
+.leaflet-tile,\r
+.leaflet-marker-icon,\r
+.leaflet-marker-shadow {\r
+	-webkit-user-select: none;\r
+	   -moz-user-select: none;\r
+	        user-select: none;\r
+	  -webkit-user-drag: none;\r
+	}\r
+/* Prevents IE11 from highlighting tiles in blue */\r
+.leaflet-tile::selection {\r
+	background: transparent;\r
+}\r
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */\r
+.leaflet-safari .leaflet-tile {\r
+	image-rendering: -webkit-optimize-contrast;\r
+	}\r
+/* hack that prevents hw layers "stretching" when loading new tiles */\r
+.leaflet-safari .leaflet-tile-container {\r
+	width: 1600px;\r
+	height: 1600px;\r
+	-webkit-transform-origin: 0 0;\r
+	}\r
+.leaflet-marker-icon,\r
+.leaflet-marker-shadow {\r
+	display: block;\r
+	}\r
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */\r
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */\r
+.leaflet-container .leaflet-overlay-pane svg {\r
+	max-width: none !important;\r
+	max-height: none !important;\r
+	}\r
+.leaflet-container .leaflet-marker-pane img,\r
+.leaflet-container .leaflet-shadow-pane img,\r
+.leaflet-container .leaflet-tile-pane img,\r
+.leaflet-container img.leaflet-image-layer,\r
+.leaflet-container .leaflet-tile {\r
+	max-width: none !important;\r
+	max-height: none !important;\r
+	width: auto;\r
+	padding: 0;\r
+	}\r
+\r
+.leaflet-container img.leaflet-tile {\r
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */\r
+	mix-blend-mode: plus-lighter;\r
+}\r
+\r
+.leaflet-container.leaflet-touch-zoom {\r
+	-ms-touch-action: pan-x pan-y;\r
+	touch-action: pan-x pan-y;\r
+	}\r
+.leaflet-container.leaflet-touch-drag {\r
+	-ms-touch-action: pinch-zoom;\r
+	/* Fallback for FF which doesn't support pinch-zoom */\r
+	touch-action: none;\r
+	touch-action: pinch-zoom;\r
+}\r
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {\r
+	-ms-touch-action: none;\r
+	touch-action: none;\r
+}\r
+.leaflet-container {\r
+	-webkit-tap-highlight-color: transparent;\r
+}\r
+.leaflet-container a {\r
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);\r
+}\r
+.leaflet-tile {\r
+	filter: inherit;\r
+	visibility: hidden;\r
+	}\r
+.leaflet-tile-loaded {\r
+	visibility: inherit;\r
+	}\r
+.leaflet-zoom-box {\r
+	width: 0;\r
+	height: 0;\r
+	-moz-box-sizing: border-box;\r
+	     box-sizing: border-box;\r
+	z-index: 800;\r
+	}\r
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */\r
+.leaflet-overlay-pane svg {\r
+	-moz-user-select: none;\r
+	}\r
+\r
+.leaflet-pane         { z-index: 400; }\r
+\r
+.leaflet-tile-pane    { z-index: 200; }\r
+.leaflet-overlay-pane { z-index: 400; }\r
+.leaflet-shadow-pane  { z-index: 500; }\r
+.leaflet-marker-pane  { z-index: 600; }\r
+.leaflet-tooltip-pane   { z-index: 650; }\r
+.leaflet-popup-pane   { z-index: 700; }\r
+\r
+.leaflet-map-pane canvas { z-index: 100; }\r
+.leaflet-map-pane svg    { z-index: 200; }\r
+\r
+.leaflet-vml-shape {\r
+	width: 1px;\r
+	height: 1px;\r
+	}\r
+.lvml {\r
+	behavior: url(#default#VML);\r
+	display: inline-block;\r
+	position: absolute;\r
+	}\r
+\r
+\r
+/* control positioning */\r
+\r
+.leaflet-control {\r
+	position: relative;\r
+	z-index: 800;\r
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */\r
+	pointer-events: auto;\r
+	}\r
+.leaflet-top,\r
+.leaflet-bottom {\r
+	position: absolute;\r
+	z-index: 1000;\r
+	pointer-events: none;\r
+	}\r
+.leaflet-top {\r
+	top: 0;\r
+	}\r
+.leaflet-right {\r
+	right: 0;\r
+	}\r
+.leaflet-bottom {\r
+	bottom: 0;\r
+	}\r
+.leaflet-left {\r
+	left: 0;\r
+	}\r
+.leaflet-control {\r
+	float: left;\r
+	clear: both;\r
+	}\r
+.leaflet-right .leaflet-control {\r
+	float: right;\r
+	}\r
+.leaflet-top .leaflet-control {\r
+	margin-top: 10px;\r
+	}\r
+.leaflet-bottom .leaflet-control {\r
+	margin-bottom: 10px;\r
+	}\r
+.leaflet-left .leaflet-control {\r
+	margin-left: 10px;\r
+	}\r
+.leaflet-right .leaflet-control {\r
+	margin-right: 10px;\r
+	}\r
+\r
+\r
+/* zoom and fade animations */\r
+\r
+.leaflet-fade-anim .leaflet-popup {\r
+	opacity: 0;\r
+	-webkit-transition: opacity 0.2s linear;\r
+	   -moz-transition: opacity 0.2s linear;\r
+	        transition: opacity 0.2s linear;\r
+	}\r
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {\r
+	opacity: 1;\r
+	}\r
+.leaflet-zoom-animated {\r
+	-webkit-transform-origin: 0 0;\r
+	    -ms-transform-origin: 0 0;\r
+	        transform-origin: 0 0;\r
+	}\r
+svg.leaflet-zoom-animated {\r
+	will-change: transform;\r
+}\r
+\r
+.leaflet-zoom-anim .leaflet-zoom-animated {\r
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);\r
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);\r
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);\r
+	}\r
+.leaflet-zoom-anim .leaflet-tile,\r
+.leaflet-pan-anim .leaflet-tile {\r
+	-webkit-transition: none;\r
+	   -moz-transition: none;\r
+	        transition: none;\r
+	}\r
+\r
+.leaflet-zoom-anim .leaflet-zoom-hide {\r
+	visibility: hidden;\r
+	}\r
+\r
+\r
+/* cursors */\r
+\r
+.leaflet-interactive {\r
+	cursor: pointer;\r
+	}\r
+.leaflet-grab {\r
+	cursor: -webkit-grab;\r
+	cursor:    -moz-grab;\r
+	cursor:         grab;\r
+	}\r
+.leaflet-crosshair,\r
+.leaflet-crosshair .leaflet-interactive {\r
+	cursor: crosshair;\r
+	}\r
+.leaflet-popup-pane,\r
+.leaflet-control {\r
+	cursor: auto;\r
+	}\r
+.leaflet-dragging .leaflet-grab,\r
+.leaflet-dragging .leaflet-grab .leaflet-interactive,\r
+.leaflet-dragging .leaflet-marker-draggable {\r
+	cursor: move;\r
+	cursor: -webkit-grabbing;\r
+	cursor:    -moz-grabbing;\r
+	cursor:         grabbing;\r
+	}\r
+\r
+/* marker & overlays interactivity */\r
+.leaflet-marker-icon,\r
+.leaflet-marker-shadow,\r
+.leaflet-image-layer,\r
+.leaflet-pane > svg path,\r
+.leaflet-tile-container {\r
+	pointer-events: none;\r
+	}\r
+\r
+.leaflet-marker-icon.leaflet-interactive,\r
+.leaflet-image-layer.leaflet-interactive,\r
+.leaflet-pane > svg path.leaflet-interactive,\r
+svg.leaflet-image-layer.leaflet-interactive path {\r
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */\r
+	pointer-events: auto;\r
+	}\r
+\r
+/* visual tweaks */\r
+\r
+.leaflet-container {\r
+	background: #ddd;\r
+	outline-offset: 1px;\r
+	}\r
+.leaflet-container a {\r
+	color: #0078A8;\r
+	}\r
+.leaflet-zoom-box {\r
+	border: 2px dotted #38f;\r
+	background: rgba(255,255,255,0.5);\r
+	}\r
+\r
+\r
+/* general typography */\r
+.leaflet-container {\r
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;\r
+	font-size: 12px;\r
+	font-size: 0.75rem;\r
+	line-height: 1.5;\r
+	}\r
+\r
+\r
+/* general toolbar styles */\r
+\r
+.leaflet-bar {\r
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);\r
+	border-radius: 4px;\r
+	}\r
+.leaflet-bar a {\r
+	background-color: #fff;\r
+	border-bottom: 1px solid #ccc;\r
+	width: 26px;\r
+	height: 26px;\r
+	line-height: 26px;\r
+	display: block;\r
+	text-align: center;\r
+	text-decoration: none;\r
+	color: black;\r
+	}\r
+.leaflet-bar a,\r
+.leaflet-control-layers-toggle {\r
+	background-position: 50% 50%;\r
+	background-repeat: no-repeat;\r
+	display: block;\r
+	}\r
+.leaflet-bar a:hover,\r
+.leaflet-bar a:focus {\r
+	background-color: #f4f4f4;\r
+	}\r
+.leaflet-bar a:first-child {\r
+	border-top-left-radius: 4px;\r
+	border-top-right-radius: 4px;\r
+	}\r
+.leaflet-bar a:last-child {\r
+	border-bottom-left-radius: 4px;\r
+	border-bottom-right-radius: 4px;\r
+	border-bottom: none;\r
+	}\r
+.leaflet-bar a.leaflet-disabled {\r
+	cursor: default;\r
+	background-color: #f4f4f4;\r
+	color: #bbb;\r
+	}\r
+\r
+.leaflet-touch .leaflet-bar a {\r
+	width: 30px;\r
+	height: 30px;\r
+	line-height: 30px;\r
+	}\r
+.leaflet-touch .leaflet-bar a:first-child {\r
+	border-top-left-radius: 2px;\r
+	border-top-right-radius: 2px;\r
+	}\r
+.leaflet-touch .leaflet-bar a:last-child {\r
+	border-bottom-left-radius: 2px;\r
+	border-bottom-right-radius: 2px;\r
+	}\r
+\r
+/* zoom control */\r
+\r
+.leaflet-control-zoom-in,\r
+.leaflet-control-zoom-out {\r
+	font: bold 18px 'Lucida Console', Monaco, monospace;\r
+	text-indent: 1px;\r
+	}\r
+\r
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {\r
+	font-size: 22px;\r
+	}\r
+\r
+\r
+/* layers control */\r
+\r
+.leaflet-control-layers {\r
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);\r
+	background: #fff;\r
+	border-radius: 5px;\r
+	}\r
+.leaflet-control-layers-toggle {\r
+	background-image: url(images/layers.png);\r
+	width: 36px;\r
+	height: 36px;\r
+	}\r
+.leaflet-retina .leaflet-control-layers-toggle {\r
+	background-image: url(images/layers-2x.png);\r
+	background-size: 26px 26px;\r
+	}\r
+.leaflet-touch .leaflet-control-layers-toggle {\r
+	width: 44px;\r
+	height: 44px;\r
+	}\r
+.leaflet-control-layers .leaflet-control-layers-list,\r
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {\r
+	display: none;\r
+	}\r
+.leaflet-control-layers-expanded .leaflet-control-layers-list {\r
+	display: block;\r
+	position: relative;\r
+	}\r
+.leaflet-control-layers-expanded {\r
+	padding: 6px 10px 6px 6px;\r
+	color: #333;\r
+	background: #fff;\r
+	}\r
+.leaflet-control-layers-scrollbar {\r
+	overflow-y: scroll;\r
+	overflow-x: hidden;\r
+	padding-right: 5px;\r
+	}\r
+.leaflet-control-layers-selector {\r
+	margin-top: 2px;\r
+	position: relative;\r
+	top: 1px;\r
+	}\r
+.leaflet-control-layers label {\r
+	display: block;\r
+	font-size: 13px;\r
+	font-size: 1.08333em;\r
+	}\r
+.leaflet-control-layers-separator {\r
+	height: 0;\r
+	border-top: 1px solid #ddd;\r
+	margin: 5px -10px 5px -6px;\r
+	}\r
+\r
+/* Default icon URLs */\r
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */\r
+	background-image: url(images/marker-icon.png);\r
+	}\r
+\r
+\r
+/* attribution and scale controls */\r
+\r
+.leaflet-container .leaflet-control-attribution {\r
+	background: #fff;\r
+	background: rgba(255, 255, 255, 0.8);\r
+	margin: 0;\r
+	}\r
+.leaflet-control-attribution,\r
+.leaflet-control-scale-line {\r
+	padding: 0 5px;\r
+	color: #333;\r
+	line-height: 1.4;\r
+	}\r
+.leaflet-control-attribution a {\r
+	text-decoration: none;\r
+	}\r
+.leaflet-control-attribution a:hover,\r
+.leaflet-control-attribution a:focus {\r
+	text-decoration: underline;\r
+	}\r
+.leaflet-attribution-flag {\r
+	display: inline !important;\r
+	vertical-align: baseline !important;\r
+	width: 1em;\r
+	height: 0.6669em;\r
+	}\r
+.leaflet-left .leaflet-control-scale {\r
+	margin-left: 5px;\r
+	}\r
+.leaflet-bottom .leaflet-control-scale {\r
+	margin-bottom: 5px;\r
+	}\r
+.leaflet-control-scale-line {\r
+	border: 2px solid #777;\r
+	border-top: none;\r
+	line-height: 1.1;\r
+	padding: 2px 5px 1px;\r
+	white-space: nowrap;\r
+	-moz-box-sizing: border-box;\r
+	     box-sizing: border-box;\r
+	background: rgba(255, 255, 255, 0.8);\r
+	text-shadow: 1px 1px #fff;\r
+	}\r
+.leaflet-control-scale-line:not(:first-child) {\r
+	border-top: 2px solid #777;\r
+	border-bottom: none;\r
+	margin-top: -2px;\r
+	}\r
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {\r
+	border-bottom: 2px solid #777;\r
+	}\r
+\r
+.leaflet-touch .leaflet-control-attribution,\r
+.leaflet-touch .leaflet-control-layers,\r
+.leaflet-touch .leaflet-bar {\r
+	box-shadow: none;\r
+	}\r
+.leaflet-touch .leaflet-control-layers,\r
+.leaflet-touch .leaflet-bar {\r
+	border: 2px solid rgba(0,0,0,0.2);\r
+	background-clip: padding-box;\r
+	}\r
+\r
+\r
+/* popup */\r
+\r
+.leaflet-popup {\r
+	position: absolute;\r
+	text-align: center;\r
+	margin-bottom: 20px;\r
+	}\r
+.leaflet-popup-content-wrapper {\r
+	padding: 1px;\r
+	text-align: left;\r
+	border-radius: 12px;\r
+	}\r
+.leaflet-popup-content {\r
+	margin: 13px 24px 13px 20px;\r
+	line-height: 1.3;\r
+	font-size: 13px;\r
+	font-size: 1.08333em;\r
+	min-height: 1px;\r
+	}\r
+.leaflet-popup-content p {\r
+	margin: 17px 0;\r
+	margin: 1.3em 0;\r
+	}\r
+.leaflet-popup-tip-container {\r
+	width: 40px;\r
+	height: 20px;\r
+	position: absolute;\r
+	left: 50%;\r
+	margin-top: -1px;\r
+	margin-left: -20px;\r
+	overflow: hidden;\r
+	pointer-events: none;\r
+	}\r
+.leaflet-popup-tip {\r
+	width: 17px;\r
+	height: 17px;\r
+	padding: 1px;\r
+\r
+	margin: -10px auto 0;\r
+	pointer-events: auto;\r
+\r
+	-webkit-transform: rotate(45deg);\r
+	   -moz-transform: rotate(45deg);\r
+	    -ms-transform: rotate(45deg);\r
+	        transform: rotate(45deg);\r
+	}\r
+.leaflet-popup-content-wrapper,\r
+.leaflet-popup-tip {\r
+	background: white;\r
+	color: #333;\r
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);\r
+	}\r
+.leaflet-container a.leaflet-popup-close-button {\r
+	position: absolute;\r
+	top: 0;\r
+	right: 0;\r
+	border: none;\r
+	text-align: center;\r
+	width: 24px;\r
+	height: 24px;\r
+	font: 16px/24px Tahoma, Verdana, sans-serif;\r
+	color: #757575;\r
+	text-decoration: none;\r
+	background: transparent;\r
+	}\r
+.leaflet-container a.leaflet-popup-close-button:hover,\r
+.leaflet-container a.leaflet-popup-close-button:focus {\r
+	color: #585858;\r
+	}\r
+.leaflet-popup-scrolled {\r
+	overflow: auto;\r
+	}\r
+\r
+.leaflet-oldie .leaflet-popup-content-wrapper {\r
+	-ms-zoom: 1;\r
+	}\r
+.leaflet-oldie .leaflet-popup-tip {\r
+	width: 24px;\r
+	margin: 0 auto;\r
+\r
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";\r
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);\r
+	}\r
+\r
+.leaflet-oldie .leaflet-control-zoom,\r
+.leaflet-oldie .leaflet-control-layers,\r
+.leaflet-oldie .leaflet-popup-content-wrapper,\r
+.leaflet-oldie .leaflet-popup-tip {\r
+	border: 1px solid #999;\r
+	}\r
+\r
+\r
+/* div icon */\r
+\r
+.leaflet-div-icon {\r
+	background: #fff;\r
+	border: 1px solid #666;\r
+	}\r
+\r
+\r
+/* Tooltip */\r
+/* Base styles for the element that has a tooltip */\r
+.leaflet-tooltip {\r
+	position: absolute;\r
+	padding: 6px;\r
+	background-color: #fff;\r
+	border: 1px solid #fff;\r
+	border-radius: 3px;\r
+	color: #222;\r
+	white-space: nowrap;\r
+	-webkit-user-select: none;\r
+	-moz-user-select: none;\r
+	-ms-user-select: none;\r
+	user-select: none;\r
+	pointer-events: none;\r
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);\r
+	}\r
+.leaflet-tooltip.leaflet-interactive {\r
+	cursor: pointer;\r
+	pointer-events: auto;\r
+	}\r
+.leaflet-tooltip-top:before,\r
+.leaflet-tooltip-bottom:before,\r
+.leaflet-tooltip-left:before,\r
+.leaflet-tooltip-right:before {\r
+	position: absolute;\r
+	pointer-events: none;\r
+	border: 6px solid transparent;\r
+	background: transparent;\r
+	content: "";\r
+	}\r
+\r
+/* Directions */\r
+\r
+.leaflet-tooltip-bottom {\r
+	margin-top: 6px;\r
+}\r
+.leaflet-tooltip-top {\r
+	margin-top: -6px;\r
+}\r
+.leaflet-tooltip-bottom:before,\r
+.leaflet-tooltip-top:before {\r
+	left: 50%;\r
+	margin-left: -6px;\r
+	}\r
+.leaflet-tooltip-top:before {\r
+	bottom: 0;\r
+	margin-bottom: -12px;\r
+	border-top-color: #fff;\r
+	}\r
+.leaflet-tooltip-bottom:before {\r
+	top: 0;\r
+	margin-top: -12px;\r
+	margin-left: -6px;\r
+	border-bottom-color: #fff;\r
+	}\r
+.leaflet-tooltip-left {\r
+	margin-left: -6px;\r
+}\r
+.leaflet-tooltip-right {\r
+	margin-left: 6px;\r
+}\r
+.leaflet-tooltip-left:before,\r
+.leaflet-tooltip-right:before {\r
+	top: 50%;\r
+	margin-top: -6px;\r
+	}\r
+.leaflet-tooltip-left:before {\r
+	right: 0;\r
+	margin-right: -12px;\r
+	border-left-color: #fff;\r
+	}\r
+.leaflet-tooltip-right:before {\r
+	left: 0;\r
+	margin-left: -12px;\r
+	border-right-color: #fff;\r
+	}\r
+\r
+/* Printing */\r
+\r
+@media print {\r
+	/* Prevent printers from removing background-images of controls. */\r
+	.leaflet-control {\r
+		-webkit-print-color-adjust: exact;\r
+		print-color-adjust: exact;\r
+		}\r
+	}\r
+`;
+
+// src/modules/travel/TravelModule.ts
 var TravelModule = class {
   constructor(plugin, container, onNavigateHome) {
     this.places = [];
@@ -11134,10 +11809,16 @@ var TravelModule = class {
     this.tileLayers = [];
     this.markerLayer = null;
     this.currentView = "standard";
+    this.tileCache = null;
     this._rendering = false;
     this._destroyed = false;
     this._lightRefreshing = false;
     this.placeFiles = /* @__PURE__ */ new Map();
+    // 🔑 地图尺寸重算相关（修复 Obsidian 视图激活时容器尺寸延迟确定导致地图显示不全）
+    this._resizeObserver = null;
+    this._wsResizeHandler = null;
+    this._resizeTimers = [];
+    this._warmTimer = 0;
     this.plugin = plugin;
     this.container = container;
     this.onNavigateHome = onNavigateHome || null;
@@ -11157,8 +11838,8 @@ var TravelModule = class {
     (async () => {
       await new Promise((r) => setTimeout(r, 50));
       const vault = this.plugin.vaultService;
-      await vault.ensureFolder("\u65C5\u884C\u8BB0\u5FC6");
-      const allFiles = vault.listMarkdownFiles("\u65C5\u884C\u8BB0\u5FC6");
+      await vault.ensureFolder(this.plugin.folder("\u65C5\u884C\u8BB0\u5FC6"));
+      const allFiles = vault.listMarkdownFiles(this.plugin.folder("\u65C5\u884C\u8BB0\u5FC6"));
       for (const f of allFiles) {
         try {
           const cnt = await vault.readFile(f);
@@ -11287,56 +11968,123 @@ var TravelModule = class {
       ],
       maxBoundsViscosity: 1,
       // 硬边界，到边缘完全停止
-      // 🔑 关键：禁用所有动画，确保最跟手
-      fadeAnimation: false,
-      zoomAnimation: false,
-      markerZoomAnimation: false
+      // 🔑 关键：开启缩放/淡入动画 → 平滑缩放（瓦片 transform 过渡 + 新瓦片淡入），消除空白闪动。
+      // updateWhenZooming:true 让缩放期间就预取新层级瓦片（边缘不再等缩放结束才加载，避免"中心先出、边缘慢半拍"）；
+      // keepBuffer:4 多缓存一圈周边瓦片（默认2），缩放/平移时边缘更快就位。
+      fadeAnimation: true,
+      zoomAnimation: true,
+      markerZoomAnimation: true,
+      updateWhenZooming: true,
+      keepBuffer: 6
     });
     this.leafletMap = map2;
+    const pid = this.plugin.manifest?.id ?? "hub-dashboard";
+    this.tileCache = new TileCache(this.plugin.app.vault.adapter, `.obsidian/plugins/${pid}/map-cache`);
     this.addTileLayers(this.currentView);
     this.markerLayer = L2.layerGroup().addTo(map2);
     setTimeout(() => this.scanVaultAndMark(), 100);
+    this.setupMapResizeHandling();
+    this.scheduleWarm();
+    map2.on("moveend", () => this.scheduleWarm());
+    map2.on("zoomend", () => this.scheduleWarm());
     const statsEl = this.container.querySelector(".magic-travel-stats");
     if (statsEl) statsEl.textContent = `\u{1F5FA}\uFE0F \u65C5\u884C\u5730\u56FE \xB7 \u5DF2\u8BB0\u5F55 ${this.places.length} \u4E2A\u5730\u70B9`;
+  }
+  // === 相邻层级瓦片预热（消除"缩放时边缘瓦片慢一拍"）===
+  // 栅格瓦片缩放时新层级边缘瓦片天然晚到。这里在地图空闲时把 zoom±1 的瓦片
+  // 通过本地缓存(TileCache)提前落盘——之后缩放时新层级瓦片已在本地磁盘，
+  // 边缘与中心同步就位，且跨重启有效（比浏览器 HTTP 缓存更彻底）。
+  scheduleWarm() {
+    clearTimeout(this._warmTimer);
+    this._warmTimer = window.setTimeout(() => this.warmAdjacentZooms(), 400);
+  }
+  warmAdjacentZooms() {
+    const map2 = this.leafletMap;
+    if (!map2 || this._destroyed || !this.tileCache) return;
+    const z = Math.round(map2.getZoom());
+    const padded = map2.getBounds().pad(0.6);
+    const tileSize = 256;
+    const cache = this.tileCache;
+    let total = 0;
+    for (const zz of [z - 1, z + 1]) {
+      if (zz < map2.getMinZoom() || zz > map2.getMaxZoom()) continue;
+      const nw = L2.CRS.EPSG3857.latLngToPoint(padded.getNorthWest(), zz);
+      const se = L2.CRS.EPSG3857.latLngToPoint(padded.getSouthEast(), zz);
+      const xMin = Math.floor(nw.x / tileSize);
+      const xMax = Math.floor(se.x / tileSize);
+      const yMin = Math.floor(nw.y / tileSize);
+      const yMax = Math.floor(se.y / tileSize);
+      if ((xMax - xMin + 1) * (yMax - yMin + 1) > 60) continue;
+      for (let x = xMin; x <= xMax; x++) {
+        for (let y = yMin; y <= yMax; y++) {
+          for (const spec of this.layerTemplates(this.currentView)) {
+            if (total++ > 120) return;
+            const url = spec.tmpl.replace(/\{s\}/g, spec.sub[Math.abs(x + y) % spec.sub.length]).replace(/\{z\}/g, String(zz)).replace(/\{x\}/g, String(x)).replace(/\{y\}/g, String(y));
+            cache.warm(TileCache.key(this.currentView, spec.tag, zz, x, y), url);
+          }
+        }
+      }
+    }
+  }
+  // 各视图的瓦片层模板（single source of truth：addTileLayers 与预热共用，确保缓存 key/URL 完全一致）
+  layerTemplates(view) {
+    switch (view) {
+      case "standard":
+        return [
+          { tmpl: "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}", tag: "base", maxZoom: 18, sub: "1234" }
+        ];
+      case "satellite":
+        return [
+          { tmpl: "https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}", tag: "sat", maxZoom: 18, sub: "1234" },
+          { tmpl: "https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}", tag: "label", maxZoom: 18, sub: "1234" }
+        ];
+      case "terrain":
+        return [
+          { tmpl: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", tag: "terrain", maxZoom: 17, sub: "abc" }
+        ];
+      default:
+        return [];
+    }
+  }
+  // === 地图尺寸自适应（修复"显示不全"）===
+  // Obsidian ItemView 激活瞬间，地图容器的真实尺寸往往尚未确定（宽度为 0 或异常），
+  // Leaflet 据此只铺了部分瓦片，表现为地图区域灰块 / 只显示一角。
+  // 三保险：① 初始延时 invalidateSize；② ResizeObserver 监听容器尺寸变化；③ 监听工作区 resize。
+  setupMapResizeHandling() {
+    const map2 = this.leafletMap;
+    if (!map2) return;
+    const mapDiv = this.container.querySelector(".magic-travel-map");
+    if (!mapDiv) return;
+    const t = window.setTimeout(() => map2.invalidateSize(), 200);
+    this._resizeTimers.push(t);
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => map2.invalidateSize());
+    });
+    ro.observe(mapDiv);
+    this._resizeObserver = ro;
+    const onWsResize = () => map2.invalidateSize();
+    this.plugin.app.workspace.on("resize", onWsResize);
+    this._wsResizeHandler = onWsResize;
   }
   addTileLayers(view) {
     if (!this.leafletMap) return;
     this.tileLayers.forEach((l) => l.remove());
     this.tileLayers = [];
-    switch (view) {
-      case "standard": {
-        const base = L2.tileLayer(
-          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}",
-          { maxZoom: 18, subdomains: "1234" }
-        );
-        base.addTo(this.leafletMap);
-        this.tileLayers.push(base);
-        break;
+    if (!this.tileCache) {
+      for (const s of this.layerTemplates(view)) {
+        const t = L2.tileLayer(s.tmpl, { maxZoom: s.maxZoom, subdomains: s.sub });
+        t.addTo(this.leafletMap);
+        this.tileLayers.push(t);
       }
-      case "satellite": {
-        const sat = L2.tileLayer(
-          "https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
-          { maxZoom: 18, subdomains: "1234" }
-        );
-        sat.addTo(this.leafletMap);
-        this.tileLayers.push(sat);
-        const label = L2.tileLayer(
-          "https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}",
-          { maxZoom: 18, subdomains: "1234" }
-        );
-        label.addTo(this.leafletMap);
-        this.tileLayers.push(label);
-        break;
-      }
-      case "terrain": {
-        const terrain = L2.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
-          maxZoom: 17,
-          subdomains: "abc"
-        });
-        terrain.addTo(this.leafletMap);
-        this.tileLayers.push(terrain);
-        break;
-      }
+      return;
+    }
+    for (const s of this.layerTemplates(view)) {
+      const layer = new CachedTileLayer(s.tmpl, { maxZoom: s.maxZoom, subdomains: s.sub });
+      layer.setCache(this.tileCache, view, s.tag);
+      layer.addTo(this.leafletMap);
+      this.tileLayers.push(layer);
     }
   }
   // === 视图切换 ===
@@ -11380,7 +12128,7 @@ var TravelModule = class {
       try {
         const cnt = await vault.readFile(f);
         const pp = parseFrontmatter(cnt);
-        const fm = pp?.data || {};
+        const fm = pp?.data ?? {};
         if (!fm.\u5730\u70B9) continue;
         const places = Array.isArray(fm.\u5730\u70B9) ? fm.\u5730\u70B9 : [fm.\u5730\u70B9];
         for (const place of places) {
@@ -11461,7 +12209,7 @@ var TravelModule = class {
     try {
       await new Promise((r) => setTimeout(r, 0));
       const vault = this.plugin.vaultService;
-      const allFiles = vault.listMarkdownFiles("\u65C5\u884C\u8BB0\u5FC6");
+      const allFiles = vault.listMarkdownFiles(this.plugin.folder("\u65C5\u884C\u8BB0\u5FC6"));
       this.places = [];
       for (let idx = 0; idx < allFiles.length; idx++) {
         const f = allFiles[idx];
@@ -11533,6 +12281,12 @@ var TravelModule = class {
   }
   // === 样式注入 ===
   injectStyles() {
+    if (!document.getElementById("magic-travel-leaflet-core")) {
+      const core = document.createElement("style");
+      core.id = "magic-travel-leaflet-core";
+      core.textContent = leaflet_default;
+      document.head.appendChild(core);
+    }
     if (document.getElementById("magic-travel-leaflet-styles")) return;
     const style = document.createElement("style");
     style.id = "magic-travel-leaflet-styles";
@@ -11688,10 +12442,10 @@ var TravelModule = class {
 ## \u65C5\u884C\u7B14\u8BB0
 
 `;
-        await vault.createMarkdownFile("\u65C5\u884C\u8BB0\u5FC6/" + fileName, content);
+        await vault.createMarkdownFile(this.plugin.folder("\u65C5\u884C\u8BB0\u5FC6") + "/" + fileName, content);
         new import_obsidian7.Notice(`\u5DF2\u6DFB\u52A0\u5730\u70B9: ${city}`);
         this.places.push({
-          file: vault.getFile("\u65C5\u884C\u8BB0\u5FC6/" + fileName),
+          file: vault.getFile(this.plugin.folder("\u65C5\u884C\u8BB0\u5FC6") + "/" + fileName),
           fm: { \u57CE\u5E02: city, \u6807\u9898: city, \u5230\u8BBF\u6B21\u6570: 0 },
           lon,
           lat
@@ -11710,9 +12464,134 @@ var TravelModule = class {
       this.leafletMap.remove();
       this.leafletMap = null;
     }
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
+    if (this._wsResizeHandler) {
+      this.plugin.app.workspace.off("resize", this._wsResizeHandler);
+      this._wsResizeHandler = null;
+    }
+    this._resizeTimers.forEach((t) => clearTimeout(t));
+    this._resizeTimers = [];
+    clearTimeout(this._warmTimer);
+    this.tileCache?.dispose();
     this.tileLayers = [];
     this.markerLayer = null;
     this.rightPanelEl = null;
+  }
+};
+var TileCache = class {
+  constructor(adapter, baseDir) {
+    this.mem = /* @__PURE__ */ new Map();
+    // key -> blob URL（会话内复用，dispose 时统一 revoke）
+    this.readOnly = false;
+    this.max = 3e4;
+    this.adapter = adapter;
+    this.base = baseDir;
+    this.adapter.mkdir(this.base).catch(() => {
+    });
+    this.adapter.list(this.base).then((files) => {
+      if (Array.isArray(files) && files.length >= this.max) this.readOnly = true;
+    }).catch(() => {
+    });
+  }
+  static key(view, tag, z, x, y) {
+    return `${view}_${tag}_${z}_${x}_${y}`;
+  }
+  path(key) {
+    return `${this.base}/${key}.png`;
+  }
+  // 显示用：优先内存 → 磁盘 → 网络；返回可直接作为 img.src 的 URL（blob: 或原网络地址）
+  async resolve(key, url) {
+    const m = this.mem.get(key);
+    if (m) return m;
+    const disk = await this.diskGet(key);
+    if (disk) {
+      const b = URL.createObjectURL(new Blob([disk]));
+      this.mem.set(key, b);
+      return b;
+    }
+    if (this.readOnly) return url;
+    try {
+      const resp = await (0, import_obsidian7.requestUrl)({ url });
+      const buf = resp.arrayBuffer;
+      this.diskStore(key, buf);
+      const b = URL.createObjectURL(new Blob([buf]));
+      this.mem.set(key, b);
+      return b;
+    } catch {
+      return url;
+    }
+  }
+  // 预热用：只落盘、不建 blob（省内存）；已存在则跳过
+  async warm(key, url) {
+    if (this.mem.has(key)) return;
+    if (await this.diskExists(key)) return;
+    if (this.readOnly) return;
+    try {
+      const resp = await (0, import_obsidian7.requestUrl)({ url });
+      this.diskStore(key, resp.arrayBuffer);
+    } catch {
+    }
+  }
+  async diskGet(key) {
+    try {
+      const p = this.path(key);
+      if (await this.adapter.exists(p)) return await this.adapter.readBinary(p);
+    } catch {
+    }
+    return null;
+  }
+  async diskExists(key) {
+    try {
+      return await this.adapter.exists(this.path(key));
+    } catch {
+      return false;
+    }
+  }
+  diskStore(key, buf) {
+    if (this.readOnly) return;
+    this.adapter.writeBinary(this.path(key), buf).catch(() => {
+    });
+  }
+  // 释放：revoke 所有会话内 blob URL
+  dispose() {
+    this.mem.forEach((u) => URL.revokeObjectURL(u));
+    this.mem.clear();
+  }
+};
+var CachedTileLayer = class extends L2.TileLayer {
+  constructor() {
+    super(...arguments);
+    this.cache = null;
+    this.view = "standard";
+    this.tag = "base";
+  }
+  setCache(cache, view, tag) {
+    this.cache = cache;
+    this.view = view;
+    this.tag = tag;
+    return this;
+  }
+  createTile(coords, done) {
+    const tile = document.createElement("img");
+    tile.className = "leaflet-tile";
+    tile.alt = "";
+    tile.setAttribute("role", "presentation");
+    const key = TileCache.key(this.view, this.tag, coords.z, coords.x, coords.y);
+    const netUrl = this.getTileUrl(coords);
+    const onReady = (src) => {
+      tile.onload = () => done(void 0, tile);
+      tile.onerror = () => done(new Error("tile load error"), tile);
+      tile.src = src;
+    };
+    if (this.cache) {
+      this.cache.resolve(key, netUrl).then(onReady).catch(() => onReady(netUrl));
+    } else {
+      onReady(netUrl);
+    }
+    return tile;
   }
 };
 var AddPlaceModal = class extends import_obsidian7.Modal {
@@ -11885,7 +12764,8 @@ var AddPlaceModal = class extends import_obsidian7.Modal {
         this.statusEl.style.color = "var(--text-error)";
       }
     } catch (e) {
-      this.statusEl.textContent = `\u274C \u641C\u7D22\u5931\u8D25\uFF1A${e.message || "\u7F51\u7EDC\u9519\u8BEF"}`;
+      const msg = e instanceof Error ? e.message : "\u7F51\u7EDC\u9519\u8BEF";
+      this.statusEl.textContent = `\u274C \u641C\u7D22\u5931\u8D25\uFF1A${msg}`;
       this.statusEl.style.color = "var(--text-error)";
     }
   }
@@ -12667,6 +13547,10 @@ var MagicOSPlugin = class extends import_obsidian10.Plugin {
   /** 静默保存设置 — 不触发视图刷新（用于缓存更新等场景，避免死循环） */
   async saveSettingsSilent() {
     await this.saveData(this.magicSettings);
+  }
+  /** 统一拼接数据存放路径：vaultRoot/name（未配置时直接 name） */
+  folder(name) {
+    return this.magicSettings.vaultRoot ? `${this.magicSettings.vaultRoot}/${name}` : name;
   }
   registerCommands() {
     const nm = this.magicSettings.moduleNames;

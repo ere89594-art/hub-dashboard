@@ -42,6 +42,21 @@ export class MagicOSSettingTab extends PluginSettingTab {
         );
     }
 
+    // === 数据存放位置 ===
+    containerEl.createEl('h3', { text: '数据存放位置' });
+
+    new Setting(containerEl)
+      .setName('数据根文件夹')
+      .setDesc('所有模块数据统一存放的父文件夹名称（位于 vault 根目录）')
+      .addText((text) =>
+        text
+          .setValue(this.plugin.magicSettings.vaultRoot)
+          .onChange(async (value) => {
+            this.plugin.magicSettings.vaultRoot = value.trim() || '中枢看板';
+            await this.plugin.saveSettings();
+          }),
+      );
+
     // === iCloud 日历同步 ===
     containerEl.createEl('h3', { text: 'iCloud 日历同步' });
 

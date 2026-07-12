@@ -8,3 +8,12 @@ Thumbs.db
 tsc-out.txt
 
 data.json
+
+# agent/memory 运行时目录（含本地记忆，不提交）
+.workbuddy/
+
+# 已回退的画板方案草稿残留（非当前插件功能）
+canvas-dashboard/
+
+# 本地瓦片缓存（运行时生成，体积大且不跨设备）
+map-cache/

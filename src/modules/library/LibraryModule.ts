@@ -77,9 +77,9 @@ export class LibraryModule {
 
   private async renderItems(container: HTMLElement): Promise<void> {
     const vault = this.plugin.vaultService;
-    await vault.ensureFolder('典藏馆');
+    await vault.ensureFolder(this.plugin.folder('典藏馆'));
 
-    const allFiles = vault.listMarkdownFiles('典藏馆');
+    const allFiles = vault.listMarkdownFiles(this.plugin.folder('典藏馆'));
     const items: { file: TFile; fm: LibraryItemFrontmatter }[] = [];
 
     for (const f of allFiles) {
@@ -165,7 +165,7 @@ export class LibraryModule {
 
   private async renderLocalFolders(container: HTMLElement): Promise<void> {
     const vault = this.plugin.vaultService;
-    const subfolders = vault.listSubfolders('典藏馆');
+    const subfolders = vault.listSubfolders(this.plugin.folder('典藏馆'));
 
     for (const sf of subfolders) {
       // 跳过已知的内容文件夹
@@ -179,13 +179,13 @@ export class LibraryModule {
       card.createDiv({ text: sf.name }).style.cssText =
         'font-size:13px;font-weight:600;color:var(--text-normal);';
 
-      const fileCount = vault.countMarkdownFiles('典藏馆/' + sf.name);
+      const fileCount = vault.countMarkdownFiles(this.plugin.folder('典藏馆') + '/' + sf.name);
       card.createDiv({ text: `${fileCount} 个文件` }).style.cssText =
         'font-size:11px;color:var(--text-muted);margin-top:4px;';
 
       card.addEventListener('click', () => {
         // 打开文件夹中的第一个文件或在 Obsidian 文件浏览器中显示
-        const files = vault.listMarkdownFiles('典藏馆/' + sf.name);
+        const files = vault.listMarkdownFiles(this.plugin.folder('典藏馆') + '/' + sf.name);
         if (files.length > 0) {
           this.plugin.app.workspace.openLinkText(files[0].path, '', false);
         } else {
@@ -234,13 +234,13 @@ export class LibraryModule {
           : category === 'book'
             ? '书籍'
             : '专辑';
-    await vault.ensureFolder('典藏馆/' + catDir);
+    await vault.ensureFolder(this.plugin.folder('典藏馆') + '/' + catDir);
 
     const fileName = `${title}-${Date.now()}.md`;
     const today = window.moment().format('YYYY-MM-DD');
     const content = `---\n标题: "${title}"\n类型: ${category}\n状态: 想看\n评分: ""\n导演: ""\n演员: ""\n作者: ""\n简介: ""\n封面: ""\n标签: []\n创建日期: ${today}\n---\n\n# ${title}\n\n## 基本信息\n\n- **类型**: ${CATEGORY_LABELS[category]}\n- **状态**: 💡 想看\n- **评分**: \n- **导演/作者**: \n\n## 简介\n\n\n\n## 评论 / 读后感 / 摘抄\n\n\n`;
 
-    await vault.createMarkdownFile(`典藏馆/${catDir}/${fileName}`, content);
+    await vault.createMarkdownFile(`${this.plugin.folder('典藏馆')}/${catDir}/${fileName}`, content);
     new Notice(`已创建「${title}」，请打开文件补充详细信息`);
     this.render();
   }
@@ -251,7 +251,7 @@ export class LibraryModule {
     const modal = new FolderInputDialog(this.plugin.app, async (name: string) => {
       if (!name.trim()) return;
       const safeName = name.trim().replace(/[\\/:*?"<>|]/g, '_');
-      await this.plugin.vaultService.ensureFolder('典藏馆/' + safeName);
+      await this.plugin.vaultService.ensureFolder(this.plugin.folder('典藏馆') + '/' + safeName);
       new Notice(`已创建文件夹: ${safeName}`);
       this.render();
     });

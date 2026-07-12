@@ -42,7 +42,7 @@ export class WorkshopModule {
 
   private async loadAndRenderAll() {
     const vault = this.plugin.vaultService;
-    const files = vault.listMarkdownFiles('创意工坊');
+    const files = vault.listMarkdownFiles(this.plugin.folder('创意工坊'));
 
     // Count by stage
     const stageCounts: Record<number, number> = {};

@@ -12,6 +12,7 @@ const ctx = await esbuild.context({
   logLevel: 'info',
   sourcemap: prod ? false : 'inline',
   treeShaking: true,
+  loader: { '.css': 'text' }, // 🔑 把 leaflet.css 作为字符串打进包，运行时注入
   outfile: 'main.js',
 });
 

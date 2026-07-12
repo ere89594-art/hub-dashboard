@@ -86,6 +86,11 @@ export default class MagicOSPlugin extends Plugin {
     await this.saveData(this.magicSettings);
   }
 
+  /** 统一拼接数据存放路径：vaultRoot/name（未配置时直接 name） */
+  folder(name: string): string {
+    return this.magicSettings.vaultRoot ? `${this.magicSettings.vaultRoot}/${name}` : name;
+  }
+
   private registerCommands(): void {
     const nm = this.magicSettings.moduleNames;
 

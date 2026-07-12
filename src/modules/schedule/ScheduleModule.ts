@@ -80,7 +80,7 @@ export class ScheduleModule {
 
     // 统计
     sb.createDiv({ cls: 'sch-sb-stats' }).textContent =
-      '本周任务: ' + this.vault.listMarkdownFiles('修习课表').length + ' 个';
+      '本周任务: ' + this.vault.listMarkdownFiles(this.plugin.folder('修习课表')).length + ' 个';
 
     // 视图切换
     const viewToggle = sb.createEl('button', {
@@ -221,7 +221,7 @@ export class ScheduleModule {
     cellsContainer.style.cssText =
       'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;flex:1;';
 
-    const allFiles = this.vault.listMarkdownFiles('修习课表');
+    const allFiles = this.vault.listMarkdownFiles(this.plugin.folder('修习课表'));
 
     for (let d = 0; d < totalDays; d++) {
       const day = weekStart.clone().add(d, 'days');
@@ -315,7 +315,7 @@ export class ScheduleModule {
         const preset: SchedulePreset = JSON.parse(data);
         const fileName = `${preset.name}-${dateStr}.md`;
         const content = `---\n标题: "${preset.name}"\n类型: 日程\n日期: ${dateStr}\n时间: "09:00"\n优先级: 中\n状态: 待办\n时长: ${preset.duration}\n颜色: "${preset.color}"\n创建日期: ${today.format('YYYY-MM-DD')}\n标签: []\n所属模块: 修习课表\n---\n\n# ${preset.name}\n\n时长: ${preset.duration}h\n`;
-        await this.vault.createMarkdownFile('修习课表/' + fileName, content);
+        await this.vault.createMarkdownFile(this.plugin.folder('修习课表') + '/' + fileName, content);
         this.render();
       });
     }
@@ -324,7 +324,7 @@ export class ScheduleModule {
   // === 统计栏 ===
 
   private async renderStats(parent: HTMLElement): Promise<void> {
-    const allFiles = this.vault.listMarkdownFiles('修习课表');
+    const allFiles = this.vault.listMarkdownFiles(this.plugin.folder('修习课表'));
     let doneCnt = 0,
       pendCnt = 0,
       todayCnt = 0,
@@ -364,7 +364,7 @@ export class ScheduleModule {
     panel.style.cssText =
       'flex:0.35;background:var(--background-secondary);border-radius:16px;border:1px solid var(--background-modifier-border);padding:12px;overflow-y:auto;';
 
-    const allFiles = this.vault.listMarkdownFiles('修习课表');
+    const allFiles = this.vault.listMarkdownFiles(this.plugin.folder('修习课表'));
     // 收集所有未完成任务
     const incompleteTasks: { file: TFile; fm: ScheduleFrontmatter; priority: string }[] = [];
     for (const f of allFiles) {
@@ -493,9 +493,9 @@ export class ScheduleModule {
       overlay.remove();
       const fileName = `日程-${dateStr}-${Date.now()}.md`;
       const content = `---\n标题: "${name}"\n类型: 日程\n日期: ${dateStr}\n时间: "09:00"\n优先级: 中\n状态: 待办\n颜色: "${selColor}"\n创建日期: ${window.moment().format('YYYY-MM-DD')}\n标签: []\n所属模块: 修习课表\n---\n\n# ${name}\n`;
-      await this.vault.createMarkdownFile('修习课表/' + fileName, content);
+      await this.vault.createMarkdownFile(this.plugin.folder('修习课表') + '/' + fileName, content);
       this.render();
-      this.openInDetailPanel('修习课表/' + fileName);
+      this.openInDetailPanel(this.plugin.folder('修习课表') + '/' + fileName);
     });
 
     cancelBtn.addEventListener('click', () => overlay.remove());
@@ -629,7 +629,7 @@ export class ScheduleModule {
 
   private async syncToICloud(): Promise<void> {
     try {
-      const allFiles = this.vault.listMarkdownFiles('修习课表');
+      const allFiles = this.vault.listMarkdownFiles(this.plugin.folder('修习课表'));
       const events: string[] = [];
       const today = window.moment().format('YYYY-MM-DD');
 
@@ -661,7 +661,8 @@ export class ScheduleModule {
       const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//中枢看板//Obsidian//EN\nCALSCALE:GREGORIAN\nX-WR-CALNAME:${calName}\n${events.join('')}END:VCALENDAR`;
 
       // 保存 ICS 文件到 vault
-      const icsPath = '修习课表/MagicOS-Calendar.ics';
+      await this.vault.ensureFolder(this.plugin.folder('修习课表'));
+      const icsPath = this.plugin.folder('修习课表') + '/MagicOS-Calendar.ics';
       const existing = this.vault.getFile(icsPath);
       if (existing) {
         await this.vault.writeFile(existing, ics);

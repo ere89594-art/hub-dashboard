@@ -222,6 +222,8 @@ export const GAP_MAP: Record<string, string> = {
 /** 插件总设置 */
 export interface MagicOSSettings {
   moduleNames: ModuleNames;
+  /** 所有模块数据统一收纳的父文件夹（vault 根目录下的单层目录名），留空则各模块直接放在库根 */
+  vaultRoot: string;
   homepageLayout: HomepageLayout;
   homepageFilters: HomepageFilters;
   customCards: CustomCard[];
