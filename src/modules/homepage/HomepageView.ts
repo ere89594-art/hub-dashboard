@@ -55,6 +55,9 @@ export class HomepageView extends ItemView {
   private travelModule: TravelModule | null = null;
   private scheduleSubTab: 'calendar' | 'project' = 'calendar';
   private dragCid: string | null = null;
+  private canvasRects: Map<string, { x: number; y: number; w: number; h: number }> = new Map();
+  private canvasEl: HTMLElement | null = null;
+  private topZ = 10;
 
   constructor(leaf: WorkspaceLeaf, plugin: MagicOSPlugin) {
     super(leaf);
@@ -225,7 +228,8 @@ export class HomepageView extends ItemView {
 
     // 根据模块渲染
     if (this.module === 'home') {
-      this.renderHomeDashboard(ct, layout, gap);
+      if (this.plugin.magicSettings.homepageMode === 'canvas') this.renderHomeCanvas(ct);
+      else this.renderHomeDashboard(ct, layout, gap);
     } else if (this.module === 'schedule') {
       this.renderScheduleModule(ct);
     } else if (this.module === 'library') {
@@ -281,11 +285,16 @@ export class HomepageView extends ItemView {
     const rld = right.createEl('button', { text: '🔄' });
     rld.style.cssText =
       'background:transparent;border:1px solid var(--background-modifier-border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--text-muted);font-size:12px;';
-    rld.title = '重载插件';
+    rld.title = '重载插件（应用代码改动后）';
     rld.addEventListener('click', async () => {
       const app = this.app as AppWithInternals;
       await app.plugins.disablePlugin('hub-dashboard');
-      setTimeout(() => void app.plugins.enablePlugin('hub-dashboard'), 150);
+      setTimeout(() => {
+        void app.plugins.enablePlugin('hub-dashboard').then(() => {
+          // 重载后重新拉起首页，避免看到空白页
+          window.setTimeout(() => this.plugin.activateModuleView('homepage'), 60);
+        });
+      }, 300);
     });
 
     const cfg = right.createEl('button', { text: '⚙' });
@@ -514,6 +523,241 @@ export class HomepageView extends ItemView {
         'text-align:center;font-size:11px;color:var(--text-faint);padding:8px;';
     }
     return card;
+  }
+
+  // === 首页卡片画布（自由布局）===
+
+  private renderHomeCanvas(ct: HTMLElement) {
+    const canvas = ct.createDiv({ cls: 'hub-dashboard-canvas' });
+    canvas.style.cssText = 'position:relative;flex:1;overflow:hidden;background:var(--background-primary);';
+    this.canvasEl = canvas;
+
+    const layout = this.plugin.magicSettings.homepageLayout;
+    const ids = layout.cardOrder.filter((id) => layout.cardVisibility[id] !== false);
+    const rects: Record<string, { x: number; y: number; w: number; h: number }> = {};
+    let needDefaults = false;
+
+    for (const id of ids) {
+      const p = layout.canvasPos[id];
+      if (p && typeof p.w === 'number' && typeof p.h === 'number') {
+        rects[id] = { x: p.x, y: p.y, w: p.w, h: p.h };
+      } else {
+        rects[id] = { x: 16, y: 16, w: 320, h: 280 };
+        needDefaults = true;
+      }
+    }
+    this.canvasRects = new Map(Object.entries(rects));
+
+    for (const id of ids) {
+      let card: HTMLElement | null = null;
+      if (id === 'schedule') card = this.renderScheduleCard(canvas, id, layout);
+      else if (id === 'tasks') card = this.renderTasksCard(canvas, id, layout);
+      else if (id === 'workshop') card = this.renderWorkshopCard(canvas, id, layout);
+      if (!card) continue;
+      this.styleCanvasCard(card, id);
+      this.makeCanvasCardInteractive(card, id);
+    }
+
+    if (needDefaults) {
+      requestAnimationFrame(() => this.applyDefaultCanvasLayout(canvas, ids));
+    }
+  }
+
+  private styleCanvasCard(card: HTMLElement, id: string) {
+    card.style.position = 'absolute';
+    card.style.gridColumn = 'auto';
+    card.style.gridRow = 'auto';
+    card.style.margin = '0';
+    card.style.padding = '0';
+    card.style.overflow = 'hidden';
+    card.style.touchAction = 'none';
+    card.style.userSelect = 'none';
+
+    const r = this.canvasRects.get(id)!;
+    card.style.left = r.x + 'px';
+    card.style.top = r.y + 'px';
+    card.style.width = r.w + 'px';
+    card.style.height = r.h + 'px';
+
+    const body = document.createElement('div');
+    body.className = 'hub-card-body';
+    body.style.cssText =
+      'position:absolute;top:26px;left:0;right:0;bottom:0;overflow-y:auto;overflow-x:hidden;padding:0 16px 16px;';
+    body.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    while (card.firstChild) body.appendChild(card.firstChild);
+    card.appendChild(body);
+
+    const handle = card.createDiv({ cls: 'hub-card-drag' });
+    handle.style.cssText =
+      'position:absolute;top:0;left:0;right:0;height:26px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--text-faint);font-size:10px;cursor:grab;background:var(--background-secondary);z-index:6;touch-action:none;user-select:none;border-top-left-radius:14px;border-top-right-radius:14px;';
+    handle.createSpan({ text: '⋮⋮' });
+    handle.createSpan({ text: '拖动 · 滚轮在卡内滚动' });
+
+    const rh = card.createDiv({ cls: 'hub-card-resize' });
+    rh.style.cssText =
+      'position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;z-index:6;touch-action:none;opacity:0.5;' +
+      'background:linear-gradient(135deg,transparent 45%,var(--text-muted) 45%,var(--text-muted) 55%,transparent 55%,' +
+      'transparent 68%,var(--text-muted) 68%,var(--text-muted) 78%,transparent 78%);';
+    rh.addEventListener('mouseenter', () => (rh.style.opacity = '0.95'));
+    rh.addEventListener('mouseleave', () => (rh.style.opacity = '0.5'));
+  }
+
+  private makeCanvasCardInteractive(card: HTMLElement, id: string) {
+    const handle = card.querySelector('.hub-card-drag') as HTMLElement | null;
+    const rh = card.querySelector('.hub-card-resize') as HTMLElement | null;
+    if (!handle) return;
+
+    handle.addEventListener('pointerdown', (e: PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const start = { x: e.clientX, y: e.clientY };
+      const orig = { ...this.canvasRects.get(id)! };
+      let lastValid = { x: orig.x, y: orig.y };
+      card.style.zIndex = String(++this.topZ);
+      handle.setPointerCapture(e.pointerId);
+
+      const move = (ev: PointerEvent) => {
+        const cand = this.tryPlace(
+          id,
+          orig.x + (ev.clientX - start.x),
+          orig.y + (ev.clientY - start.y),
+          orig.w,
+          orig.h,
+        );
+        if (cand) {
+          lastValid = cand;
+          card.style.left = cand.x + 'px';
+          card.style.top = cand.y + 'px';
+        }
+      };
+      const end = (ev: PointerEvent) => {
+        handle.releasePointerCapture(ev.pointerId);
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', end);
+        handle.removeEventListener('pointercancel', end);
+        this.canvasRects.set(id, { x: lastValid.x, y: lastValid.y, w: orig.w, h: orig.h });
+        this.persistCanvasPos(id, lastValid.x, lastValid.y, orig.w, orig.h);
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+    });
+
+    if (!rh) return;
+    rh.addEventListener('pointerdown', (e: PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const start = { x: e.clientX, y: e.clientY };
+      const orig = { ...this.canvasRects.get(id)! };
+      const MIN_W = 200;
+      const MIN_H = 140;
+      let lastValid = { w: orig.w || MIN_W, h: orig.h || MIN_H };
+      card.style.zIndex = String(++this.topZ);
+      rh.setPointerCapture(e.pointerId);
+
+      const move = (ev: PointerEvent) => {
+        const cand = this.tryResize(
+          id,
+          orig.x,
+          orig.y,
+          Math.max(MIN_W, (orig.w || MIN_W) + (ev.clientX - start.x)),
+          Math.max(MIN_H, (orig.h || MIN_H) + (ev.clientY - start.y)),
+        );
+        if (cand) {
+          lastValid = cand;
+          card.style.width = cand.w + 'px';
+          card.style.height = cand.h + 'px';
+        }
+      };
+      const end = (ev: PointerEvent) => {
+        rh.releasePointerCapture(ev.pointerId);
+        rh.removeEventListener('pointermove', move);
+        rh.removeEventListener('pointerup', end);
+        rh.removeEventListener('pointercancel', end);
+        const cur = this.canvasRects.get(id)!;
+        const x = cur?.x ?? orig.x;
+        const y = cur?.y ?? orig.y;
+        this.canvasRects.set(id, { x, y, w: lastValid.w, h: lastValid.h });
+        this.persistCanvasPos(id, x, y, lastValid.w, lastValid.h);
+      };
+      rh.addEventListener('pointermove', move);
+      rh.addEventListener('pointerup', end);
+      rh.addEventListener('pointercancel', end);
+    });
+  }
+
+  private tryPlace(
+    id: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): { x: number; y: number } | null {
+    if (!this.canvasEl) return null;
+    const vw = this.canvasEl.clientWidth;
+    const vh = this.canvasEl.clientHeight;
+    // 方案B：允许卡片自由重叠摆放，仅约束不超出画布视口（卡片永不丢失在窗口外）
+    const nx = Math.max(0, Math.min(x, Math.max(0, vw - w)));
+    const ny = Math.max(0, Math.min(y, Math.max(0, vh - h)));
+    return { x: nx, y: ny };
+  }
+
+  private tryResize(
+    id: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): { w: number; h: number } | null {
+    if (!this.canvasEl) return null;
+    const vw = this.canvasEl.clientWidth;
+    const vh = this.canvasEl.clientHeight;
+    const MIN_W = 200;
+    const MIN_H = 140;
+    // 方案B：允许自由重叠，仅约束不超出视口、不小于最小尺寸
+    let nw = w;
+    let nh = h;
+    if (x + nw > vw) nw = vw - x;
+    if (y + nh > vh) nh = vh - y;
+    if (nw < MIN_W || nh < MIN_H) return null;
+    return { w: nw, h: nh };
+  }
+
+  private persistCanvasPos(id: string, x: number, y: number, w: number, h: number) {
+    this.plugin.magicSettings.homepageLayout.canvasPos[id] = {
+      x: Math.round(x),
+      y: Math.round(y),
+      w: Math.round(w),
+      h: Math.round(h),
+    };
+    this.plugin.saveSettingsSilent();
+  }
+
+  private applyDefaultCanvasLayout(canvas: HTMLElement, ids: string[]) {
+    const vw = canvas.clientWidth || 1000;
+    const vh = canvas.clientHeight || 640;
+    const GAP = 24;
+    const colW = Math.max(220, Math.min(360, Math.floor(vw / 2 - GAP * 2)));
+    const rowH = Math.max(160, Math.min(240, Math.floor(vh / 2 - GAP * 2)));
+    const defs: Record<string, { x: number; y: number; w: number; h: number }> = {};
+    if (ids.includes('schedule')) defs.schedule = { x: GAP, y: GAP, w: colW, h: rowH };
+    if (ids.includes('tasks')) defs.tasks = { x: GAP * 2 + colW, y: GAP, w: colW, h: rowH };
+    if (ids.includes('workshop'))
+      defs.workshop = { x: GAP, y: GAP * 2 + rowH, w: colW, h: rowH };
+    for (const id of ids) {
+      const d = defs[id] || { x: GAP, y: GAP, w: 320, h: 280 };
+      this.canvasRects.set(id, d);
+      const el = this.containerEl.querySelector(
+        `[data-card-id="${id}"]`,
+      ) as HTMLElement | null;
+      if (el) {
+        el.style.left = d.x + 'px';
+        el.style.top = d.y + 'px';
+        el.style.width = d.w + 'px';
+        el.style.height = d.h + 'px';
+      }
+      this.persistCanvasPos(id, d.x, d.y, d.w, d.h);
+    }
   }
 
   // === 首页卡片交互：拖拽排序 + 缩放跨度 ===
@@ -790,6 +1034,13 @@ export class HomepageView extends ItemView {
         font-size: 11px;
         color: var(--text-faint);
         padding: 12px;
+      }
+      .hub-dashboard-canvas {
+        background-image: radial-gradient(var(--background-modifier-border) 1px, transparent 1px);
+        background-size: 22px 22px;
+      }
+      .hub-card-drag {
+        user-select: none;
       }
       @media (max-width: 900px) {
         .hub-dashboard-grid { grid-template-columns: repeat(3,1fr) !important; }

@@ -84,6 +84,34 @@ export class MagicOSSettingTab extends PluginSettingTab {
           }),
       );
 
+    // === 首页布局模式 ===
+    containerEl.createEl('h3', { text: '首页 — 布局模式' });
+
+    new Setting(containerEl)
+      .setName('首页布局模式')
+      .setDesc('自由画布：卡片可自由拖动 / 缩放 / 排列且不重叠；栅格：自动排版')
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('canvas', '自由画布')
+          .addOption('grid', '栅格')
+          .setValue(this.plugin.magicSettings.homepageMode)
+          .onChange(async (value) => {
+            this.plugin.magicSettings.homepageMode = value as 'grid' | 'canvas';
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName('重置卡片画布布局')
+      .setDesc('清除已保存的卡片位置，下次打开首页会重新自动排布')
+      .addButton((btn) =>
+        btn.setButtonText('重置').onClick(async () => {
+          this.plugin.magicSettings.homepageLayout.canvasPos = {};
+          await this.plugin.saveSettings();
+          new Notice('已重置首页卡片画布布局，重新打开首页生效');
+        }),
+      );
+
     // === 首页布局 ===
     containerEl.createEl('h3', { text: '首页 — 栅格布局' });
 

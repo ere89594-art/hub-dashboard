@@ -9597,6 +9597,7 @@ var DEFAULT_SETTINGS = {
     creativeWorkshop: "\u521B\u610F\u5DE5\u574A"
   },
   vaultRoot: "\u4E2D\u67A2\u770B\u677F",
+  homepageMode: "canvas",
   homepageLayout: {
     gridColumns: 4,
     gridRows: "auto",
@@ -9622,6 +9623,7 @@ var DEFAULT_SETTINGS = {
       tasks: { x: 50, y: 0, w: 50 },
       workshop: { x: 0, y: 25, w: 100 }
     },
+    canvasPos: {},
     navIcons: {
       schedule: "\u{1F4C5}",
       library: "\u{1F4DA}",
@@ -9710,6 +9712,20 @@ var MagicOSSettingTab = class extends import_obsidian.PluginSettingTab {
       (text) => text.setValue(this.plugin.magicSettings.icloudCalendar.calendarName).onChange(async (value) => {
         this.plugin.magicSettings.icloudCalendar.calendarName = value || "\u4E2D\u67A2\u770B\u677F";
         await this.plugin.saveSettings();
+      })
+    );
+    containerEl.createEl("h3", { text: "\u9996\u9875 \u2014 \u5E03\u5C40\u6A21\u5F0F" });
+    new import_obsidian.Setting(containerEl).setName("\u9996\u9875\u5E03\u5C40\u6A21\u5F0F").setDesc("\u81EA\u7531\u753B\u5E03\uFF1A\u5361\u7247\u53EF\u81EA\u7531\u62D6\u52A8 / \u7F29\u653E / \u6392\u5217\u4E14\u4E0D\u91CD\u53E0\uFF1B\u6805\u683C\uFF1A\u81EA\u52A8\u6392\u7248").addDropdown(
+      (dropdown) => dropdown.addOption("canvas", "\u81EA\u7531\u753B\u5E03").addOption("grid", "\u6805\u683C").setValue(this.plugin.magicSettings.homepageMode).onChange(async (value) => {
+        this.plugin.magicSettings.homepageMode = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("\u91CD\u7F6E\u5361\u7247\u753B\u5E03\u5E03\u5C40").setDesc("\u6E05\u9664\u5DF2\u4FDD\u5B58\u7684\u5361\u7247\u4F4D\u7F6E\uFF0C\u4E0B\u6B21\u6253\u5F00\u9996\u9875\u4F1A\u91CD\u65B0\u81EA\u52A8\u6392\u5E03").addButton(
+      (btn) => btn.setButtonText("\u91CD\u7F6E").onClick(async () => {
+        this.plugin.magicSettings.homepageLayout.canvasPos = {};
+        await this.plugin.saveSettings();
+        new import_obsidian.Notice("\u5DF2\u91CD\u7F6E\u9996\u9875\u5361\u7247\u753B\u5E03\u5E03\u5C40\uFF0C\u91CD\u65B0\u6253\u5F00\u9996\u9875\u751F\u6548");
       })
     );
     containerEl.createEl("h3", { text: "\u9996\u9875 \u2014 \u6805\u683C\u5E03\u5C40" });
@@ -12800,6 +12816,9 @@ var HomepageView = class extends import_obsidian8.ItemView {
     this.travelModule = null;
     this.scheduleSubTab = "calendar";
     this.dragCid = null;
+    this.canvasRects = /* @__PURE__ */ new Map();
+    this.canvasEl = null;
+    this.topZ = 10;
     this.plugin = plugin;
   }
   getViewType() {
@@ -12935,7 +12954,8 @@ var HomepageView = class extends import_obsidian8.ItemView {
     this.renderToolbar(ct);
     this.renderNavBar(ct, layout, gap);
     if (this.module === "home") {
-      this.renderHomeDashboard(ct, layout, gap);
+      if (this.plugin.magicSettings.homepageMode === "canvas") this.renderHomeCanvas(ct);
+      else this.renderHomeDashboard(ct, layout, gap);
     } else if (this.module === "schedule") {
       this.renderScheduleModule(ct);
     } else if (this.module === "library") {
@@ -12975,11 +12995,15 @@ var HomepageView = class extends import_obsidian8.ItemView {
     right.style.cssText = "display:flex;gap:4px;align-items:center;";
     const rld = right.createEl("button", { text: "\u{1F504}" });
     rld.style.cssText = "background:transparent;border:1px solid var(--background-modifier-border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--text-muted);font-size:12px;";
-    rld.title = "\u91CD\u8F7D\u63D2\u4EF6";
+    rld.title = "\u91CD\u8F7D\u63D2\u4EF6\uFF08\u5E94\u7528\u4EE3\u7801\u6539\u52A8\u540E\uFF09";
     rld.addEventListener("click", async () => {
       const app = this.app;
       await app.plugins.disablePlugin("hub-dashboard");
-      setTimeout(() => void app.plugins.enablePlugin("hub-dashboard"), 150);
+      setTimeout(() => {
+        void app.plugins.enablePlugin("hub-dashboard").then(() => {
+          window.setTimeout(() => this.plugin.activateModuleView("homepage"), 60);
+        });
+      }, 300);
     });
     const cfg = right.createEl("button", { text: "\u2699" });
     cfg.style.cssText = "background:transparent;border:1px solid var(--background-modifier-border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--text-muted);font-size:12px;";
@@ -13147,6 +13171,202 @@ var HomepageView = class extends import_obsidian8.ItemView {
       card.createDiv({ text: "\u4E00\u5207\u8FDB\u5C55\u987A\u5229 \u2728" }).style.cssText = "text-align:center;font-size:11px;color:var(--text-faint);padding:8px;";
     }
     return card;
+  }
+  // === 首页卡片画布（自由布局）===
+  renderHomeCanvas(ct) {
+    const canvas = ct.createDiv({ cls: "hub-dashboard-canvas" });
+    canvas.style.cssText = "position:relative;flex:1;overflow:hidden;background:var(--background-primary);";
+    this.canvasEl = canvas;
+    const layout = this.plugin.magicSettings.homepageLayout;
+    const ids = layout.cardOrder.filter((id) => layout.cardVisibility[id] !== false);
+    const rects = {};
+    let needDefaults = false;
+    for (const id of ids) {
+      const p = layout.canvasPos[id];
+      if (p && typeof p.w === "number" && typeof p.h === "number") {
+        rects[id] = { x: p.x, y: p.y, w: p.w, h: p.h };
+      } else {
+        rects[id] = { x: 16, y: 16, w: 320, h: 280 };
+        needDefaults = true;
+      }
+    }
+    this.canvasRects = new Map(Object.entries(rects));
+    for (const id of ids) {
+      let card = null;
+      if (id === "schedule") card = this.renderScheduleCard(canvas, id, layout);
+      else if (id === "tasks") card = this.renderTasksCard(canvas, id, layout);
+      else if (id === "workshop") card = this.renderWorkshopCard(canvas, id, layout);
+      if (!card) continue;
+      this.styleCanvasCard(card, id);
+      this.makeCanvasCardInteractive(card, id);
+    }
+    if (needDefaults) {
+      requestAnimationFrame(() => this.applyDefaultCanvasLayout(canvas, ids));
+    }
+  }
+  styleCanvasCard(card, id) {
+    card.style.position = "absolute";
+    card.style.gridColumn = "auto";
+    card.style.gridRow = "auto";
+    card.style.margin = "0";
+    card.style.padding = "0";
+    card.style.overflow = "hidden";
+    card.style.touchAction = "none";
+    card.style.userSelect = "none";
+    const r = this.canvasRects.get(id);
+    card.style.left = r.x + "px";
+    card.style.top = r.y + "px";
+    card.style.width = r.w + "px";
+    card.style.height = r.h + "px";
+    const body = document.createElement("div");
+    body.className = "hub-card-body";
+    body.style.cssText = "position:absolute;top:26px;left:0;right:0;bottom:0;overflow-y:auto;overflow-x:hidden;padding:0 16px 16px;";
+    body.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+    while (card.firstChild) body.appendChild(card.firstChild);
+    card.appendChild(body);
+    const handle = card.createDiv({ cls: "hub-card-drag" });
+    handle.style.cssText = "position:absolute;top:0;left:0;right:0;height:26px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--text-faint);font-size:10px;cursor:grab;background:var(--background-secondary);z-index:6;touch-action:none;user-select:none;border-top-left-radius:14px;border-top-right-radius:14px;";
+    handle.createSpan({ text: "\u22EE\u22EE" });
+    handle.createSpan({ text: "\u62D6\u52A8 \xB7 \u6EDA\u8F6E\u5728\u5361\u5185\u6EDA\u52A8" });
+    const rh = card.createDiv({ cls: "hub-card-resize" });
+    rh.style.cssText = "position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;z-index:6;touch-action:none;opacity:0.5;background:linear-gradient(135deg,transparent 45%,var(--text-muted) 45%,var(--text-muted) 55%,transparent 55%,transparent 68%,var(--text-muted) 68%,var(--text-muted) 78%,transparent 78%);";
+    rh.addEventListener("mouseenter", () => rh.style.opacity = "0.95");
+    rh.addEventListener("mouseleave", () => rh.style.opacity = "0.5");
+  }
+  makeCanvasCardInteractive(card, id) {
+    const handle = card.querySelector(".hub-card-drag");
+    const rh = card.querySelector(".hub-card-resize");
+    if (!handle) return;
+    handle.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const start = { x: e.clientX, y: e.clientY };
+      const orig = { ...this.canvasRects.get(id) };
+      let lastValid = { x: orig.x, y: orig.y };
+      card.style.zIndex = String(++this.topZ);
+      handle.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        const cand = this.tryPlace(
+          id,
+          orig.x + (ev.clientX - start.x),
+          orig.y + (ev.clientY - start.y),
+          orig.w,
+          orig.h
+        );
+        if (cand) {
+          lastValid = cand;
+          card.style.left = cand.x + "px";
+          card.style.top = cand.y + "px";
+        }
+      };
+      const end = (ev) => {
+        handle.releasePointerCapture(ev.pointerId);
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", end);
+        handle.removeEventListener("pointercancel", end);
+        this.canvasRects.set(id, { x: lastValid.x, y: lastValid.y, w: orig.w, h: orig.h });
+        this.persistCanvasPos(id, lastValid.x, lastValid.y, orig.w, orig.h);
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", end);
+      handle.addEventListener("pointercancel", end);
+    });
+    if (!rh) return;
+    rh.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const start = { x: e.clientX, y: e.clientY };
+      const orig = { ...this.canvasRects.get(id) };
+      const MIN_W = 200;
+      const MIN_H = 140;
+      let lastValid = { w: orig.w || MIN_W, h: orig.h || MIN_H };
+      card.style.zIndex = String(++this.topZ);
+      rh.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        const cand = this.tryResize(
+          id,
+          orig.x,
+          orig.y,
+          Math.max(MIN_W, (orig.w || MIN_W) + (ev.clientX - start.x)),
+          Math.max(MIN_H, (orig.h || MIN_H) + (ev.clientY - start.y))
+        );
+        if (cand) {
+          lastValid = cand;
+          card.style.width = cand.w + "px";
+          card.style.height = cand.h + "px";
+        }
+      };
+      const end = (ev) => {
+        rh.releasePointerCapture(ev.pointerId);
+        rh.removeEventListener("pointermove", move);
+        rh.removeEventListener("pointerup", end);
+        rh.removeEventListener("pointercancel", end);
+        const cur = this.canvasRects.get(id);
+        const x = cur?.x ?? orig.x;
+        const y = cur?.y ?? orig.y;
+        this.canvasRects.set(id, { x, y, w: lastValid.w, h: lastValid.h });
+        this.persistCanvasPos(id, x, y, lastValid.w, lastValid.h);
+      };
+      rh.addEventListener("pointermove", move);
+      rh.addEventListener("pointerup", end);
+      rh.addEventListener("pointercancel", end);
+    });
+  }
+  tryPlace(id, x, y, w, h) {
+    if (!this.canvasEl) return null;
+    const vw = this.canvasEl.clientWidth;
+    const vh = this.canvasEl.clientHeight;
+    const nx = Math.max(0, Math.min(x, Math.max(0, vw - w)));
+    const ny = Math.max(0, Math.min(y, Math.max(0, vh - h)));
+    return { x: nx, y: ny };
+  }
+  tryResize(id, x, y, w, h) {
+    if (!this.canvasEl) return null;
+    const vw = this.canvasEl.clientWidth;
+    const vh = this.canvasEl.clientHeight;
+    const MIN_W = 200;
+    const MIN_H = 140;
+    let nw = w;
+    let nh = h;
+    if (x + nw > vw) nw = vw - x;
+    if (y + nh > vh) nh = vh - y;
+    if (nw < MIN_W || nh < MIN_H) return null;
+    return { w: nw, h: nh };
+  }
+  persistCanvasPos(id, x, y, w, h) {
+    this.plugin.magicSettings.homepageLayout.canvasPos[id] = {
+      x: Math.round(x),
+      y: Math.round(y),
+      w: Math.round(w),
+      h: Math.round(h)
+    };
+    this.plugin.saveSettingsSilent();
+  }
+  applyDefaultCanvasLayout(canvas, ids) {
+    const vw = canvas.clientWidth || 1e3;
+    const vh = canvas.clientHeight || 640;
+    const GAP = 24;
+    const colW = Math.max(220, Math.min(360, Math.floor(vw / 2 - GAP * 2)));
+    const rowH = Math.max(160, Math.min(240, Math.floor(vh / 2 - GAP * 2)));
+    const defs = {};
+    if (ids.includes("schedule")) defs.schedule = { x: GAP, y: GAP, w: colW, h: rowH };
+    if (ids.includes("tasks")) defs.tasks = { x: GAP * 2 + colW, y: GAP, w: colW, h: rowH };
+    if (ids.includes("workshop"))
+      defs.workshop = { x: GAP, y: GAP * 2 + rowH, w: colW, h: rowH };
+    for (const id of ids) {
+      const d = defs[id] || { x: GAP, y: GAP, w: 320, h: 280 };
+      this.canvasRects.set(id, d);
+      const el = this.containerEl.querySelector(
+        `[data-card-id="${id}"]`
+      );
+      if (el) {
+        el.style.left = d.x + "px";
+        el.style.top = d.y + "px";
+        el.style.width = d.w + "px";
+        el.style.height = d.h + "px";
+      }
+      this.persistCanvasPos(id, d.x, d.y, d.w, d.h);
+    }
   }
   // === 首页卡片交互：拖拽排序 + 缩放跨度 ===
   makeCardInteractive(card, cid) {
@@ -13383,6 +13603,13 @@ var HomepageView = class extends import_obsidian8.ItemView {
         font-size: 11px;
         color: var(--text-faint);
         padding: 12px;
+      }
+      .hub-dashboard-canvas {
+        background-image: radial-gradient(var(--background-modifier-border) 1px, transparent 1px);
+        background-size: 22px 22px;
+      }
+      .hub-card-drag {
+        user-select: none;
       }
       @media (max-width: 900px) {
         .hub-dashboard-grid { grid-template-columns: repeat(3,1fr) !important; }

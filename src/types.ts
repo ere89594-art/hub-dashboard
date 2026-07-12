@@ -19,6 +19,7 @@ export interface HomepageLayout {
   cardSpans: Record<string, number>;
   cardRowSpans: Record<string, number>;
   cardLayout: Record<string, { x: number; y: number; w: number; h?: number }>;
+  canvasPos: Record<string, { x: number; y: number; w: number; h: number }>;
   navIcons: Record<string, string>;
 }
 
@@ -225,6 +226,7 @@ export interface MagicOSSettings {
   /** 所有模块数据统一收纳的父文件夹（vault 根目录下的单层目录名），留空则各模块直接放在库根 */
   vaultRoot: string;
   homepageLayout: HomepageLayout;
+  homepageMode: 'grid' | 'canvas';
   homepageFilters: HomepageFilters;
   customCards: CustomCard[];
   schedulePresets: SchedulePreset[];

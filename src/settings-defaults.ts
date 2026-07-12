@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS: MagicOSSettings = {
     creativeWorkshop: '创意工坊',
   },
   vaultRoot: '中枢看板',
+  homepageMode: 'canvas',
   homepageLayout: {
     gridColumns: 4,
     gridRows: 'auto',
@@ -36,6 +37,7 @@ export const DEFAULT_SETTINGS: MagicOSSettings = {
       tasks: { x: 50, y: 0, w: 50 },
       workshop: { x: 0, y: 25, w: 100 },
     },
+    canvasPos: {},
     navIcons: {
       schedule: '📅',
       library: '📚',
