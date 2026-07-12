@@ -1,0 +1,10 @@
+{
+  "id": "hub-dashboard",
+  "name": "中枢看板",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "个人系统中枢 — 首页仪表盘、修习课表、典藏馆、旅行记忆、创意工坊，五大模块一屏掌控",
+  "author": "Magic OS",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
