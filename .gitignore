@@ -6,3 +6,5 @@ Thumbs.db
 *.tsbuildinfo
 
 tsc-out.txt
+
+data.json
