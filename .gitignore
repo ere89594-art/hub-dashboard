@@ -4,3 +4,5 @@ node_modules/
 Thumbs.db
 .cache/
 *.tsbuildinfo
+
+tsc-out.txt
